@@ -1,0 +1,96 @@
+export const STRINGS = {
+  app: {
+    name: 'Finance Manager',
+    tagline: "Biznes pul oqimini boshqarish",
+  },
+  nav: {
+    overview: 'Bosh sahifa',
+    transactions: 'Tranzaksiyalar',
+    analytics: 'Tahlil',
+    categories: 'Kategoriyalar',
+  },
+  common: {
+    loading: 'Yuklanmoqda...',
+    save: 'Saqlash',
+    cancel: 'Bekor qilish',
+    delete: "O'chirish",
+    edit: 'Tahrirlash',
+    add: "Qo'shish",
+    confirm: 'Tasdiqlash',
+    income: 'Kirim',
+    expense: 'Xarajat',
+    all: 'Hammasi',
+    search: 'Qidiruv...',
+    note: 'Izoh',
+    amount: 'Summa',
+    category: 'Kategoriya',
+    date: 'Sana',
+    type: 'Turi',
+    source: 'Manba',
+    actions: 'Amallar',
+    total: 'Jami',
+    none: "Yo'q",
+  },
+  overview: {
+    income: 'Oylik kirim',
+    expense: 'Oylik xarajat',
+    net: 'Sof balans',
+    quickAdd: "Tezkor qo'shish",
+    incomeVsExpense: 'Kirim va xarajat',
+    topCategories: 'Top xarajat kategoriyalari',
+    recent: "So'nggi tranzaksiyalar",
+    emptyTitle: "Moliyaviy ma'lumotlar yo'q",
+    emptySubtitle:
+      "Telegram bot yoki quyidagi forma orqali birinchi tranzaksiyani qo'shing",
+  },
+  transactions: {
+    title: 'Tranzaksiyalar',
+    addNew: "Yangi qo'shish",
+    export: 'CSV',
+    deleteConfirm: "Tranzaksiyani o'chirishni tasdiqlaysizmi?",
+    empty: 'Tranzaksiyalar topilmadi',
+  },
+  analytics: {
+    title: 'Tahlil',
+    incomeByCategory: "Kirim — kategoriya bo'yicha",
+    expenseByCategory: "Xarajat — kategoriya bo'yicha",
+    dailyTrend: 'Kunlik dinamika',
+    budget: 'Byudjet',
+    avgDaily: "O'rtacha kunlik xarajat",
+    biggestExpense: 'Eng katta xarajat',
+    mostActive: 'Eng faol kategoriya',
+  },
+  categories: {
+    title: 'Kategoriyalar',
+    incomeCol: 'Kirim kategoriyalari',
+    expenseCol: 'Xarajat kategoriyalari',
+    addInline: "Yangi kategoriya qo'shish",
+    blocked: 'tranzaksiya mavjud',
+    defaultBadge: 'standart',
+    budgetLabel: 'Oylik byudjet',
+    txCount: 'tranzaksiya',
+    monthTotal: 'Bu oy',
+  },
+  toasts: {
+    saved: 'Saqlandi',
+    deleted: "O'chirildi",
+    updated: 'Yangilandi',
+    error: 'Xatolik yuz berdi',
+  },
+  periods: {
+    week: 'Shu hafta',
+    month: 'Bu oy',
+    'last-month': "O'tgan oy",
+    custom: 'Boshqa',
+  },
+};
+
+export const TYPE_LABEL: Record<'INCOME' | 'EXPENSE', string> = {
+  INCOME: STRINGS.common.income,
+  EXPENSE: STRINGS.common.expense,
+};
+
+export const SOURCE_LABEL: Record<'DASHBOARD' | 'TELEGRAM', string> = {
+  DASHBOARD: 'Dashboard',
+  TELEGRAM: 'Telegram',
+};
