@@ -13,9 +13,9 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 export class CategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(type?: Type) {
+  async list(userId: string, type?: Type) {
     const cats = await this.prisma.category.findMany({
-      where: type ? { type } : undefined,
+      where: { userId, ...(type && { type }) },
       orderBy: [{ type: 'asc' }, { isDefault: 'desc' }, { name: 'asc' }],
       include: {
         _count: { select: { transactions: true } },
@@ -27,7 +27,7 @@ export class CategoriesService {
 
     const monthlyTotals = await this.prisma.transaction.groupBy({
       by: ['categoryId'],
-      where: { date: { gte: monthStart } },
+      where: { userId, date: { gte: monthStart } },
       _sum: { amount: true },
     });
 
@@ -42,32 +42,36 @@ export class CategoriesService {
     }));
   }
 
-  async findById(id: string) {
-    const cat = await this.prisma.category.findUnique({
-      where: { id },
+  async findById(userId: string, id: string) {
+    const cat = await this.prisma.category.findFirst({
+      where: { id, userId },
       include: { _count: { select: { transactions: true } } },
     });
     if (!cat) throw new NotFoundException('Category not found');
     return cat;
   }
 
-  async create(dto: CreateCategoryDto) {
+  async create(userId: string, dto: CreateCategoryDto) {
     const existing = await this.prisma.category.findUnique({
-      where: { name_type: { name: dto.name, type: dto.type } },
+      where: {
+        userId_name_type: { userId, name: dto.name, type: dto.type },
+      },
     });
     if (existing) {
       throw new ConflictException(
         `Category "${dto.name}" already exists for ${dto.type}`,
       );
     }
-    return this.prisma.category.create({ data: dto });
+    return this.prisma.category.create({ data: { ...dto, userId } });
   }
 
-  async update(id: string, dto: UpdateCategoryDto) {
-    const cat = await this.findById(id);
+  async update(userId: string, id: string, dto: UpdateCategoryDto) {
+    const cat = await this.findById(userId, id);
     if (dto.name && dto.name !== cat.name) {
       const dup = await this.prisma.category.findUnique({
-        where: { name_type: { name: dto.name, type: cat.type } },
+        where: {
+          userId_name_type: { userId, name: dto.name, type: cat.type },
+        },
       });
       if (dup) {
         throw new ConflictException(
@@ -81,8 +85,8 @@ export class CategoriesService {
     });
   }
 
-  async delete(id: string) {
-    const cat = await this.findById(id);
+  async delete(userId: string, id: string) {
+    const cat = await this.findById(userId, id);
     if (cat.isDefault) {
       throw new BadRequestException(
         'Default categories cannot be deleted',

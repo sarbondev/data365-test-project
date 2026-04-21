@@ -108,3 +108,17 @@ export interface BudgetResponse {
   period: { start: string; end: string };
   items: BudgetItem[];
 }
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  phone: string;
+  telegramChatId: string | null;
+}
+
+export interface RegisterStartResponse {
+  token: string;
+  telegramDeepLink: string;
+  expiresAt: string;
+  phone: string;
+}

@@ -13,8 +13,8 @@ import { ListTransactionsDto } from './dto/list-transactions.dto';
 export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(query: ListTransactionsDto) {
-    const where: Prisma.TransactionWhereInput = {};
+  async list(userId: string, query: ListTransactionsDto) {
+    const where: Prisma.TransactionWhereInput = { userId };
     if (query.type) where.type = query.type;
     if (query.categoryId) where.categoryId = query.categoryId;
     if (query.startDate || query.endDate) {
@@ -52,22 +52,22 @@ export class TransactionsService {
     };
   }
 
-  async findById(id: string) {
-    const tx = await this.prisma.transaction.findUnique({
-      where: { id },
+  async findById(userId: string, id: string) {
+    const tx = await this.prisma.transaction.findFirst({
+      where: { id, userId },
       include: { category: true },
     });
     if (!tx) throw new NotFoundException('Transaction not found');
     return tx;
   }
 
-  async create(dto: CreateTransactionDto) {
+  async create(userId: string, dto: CreateTransactionDto) {
     if (dto.amount <= 0) {
       throw new BadRequestException('Amount must be positive');
     }
 
-    const category = await this.prisma.category.findUnique({
-      where: { id: dto.categoryId },
+    const category = await this.prisma.category.findFirst({
+      where: { id: dto.categoryId, userId },
     });
     if (!category) throw new NotFoundException('Category not found');
     if (category.type !== dto.type) {
@@ -78,6 +78,7 @@ export class TransactionsService {
 
     return this.prisma.transaction.create({
       data: {
+        userId,
         type: dto.type,
         amount: dto.amount,
         categoryId: dto.categoryId,
@@ -89,16 +90,16 @@ export class TransactionsService {
     });
   }
 
-  async update(id: string, dto: UpdateTransactionDto) {
-    await this.findById(id);
+  async update(userId: string, id: string, dto: UpdateTransactionDto) {
+    await this.findById(userId, id);
 
     if (dto.amount !== undefined && dto.amount <= 0) {
       throw new BadRequestException('Amount must be positive');
     }
 
     if (dto.categoryId) {
-      const category = await this.prisma.category.findUnique({
-        where: { id: dto.categoryId },
+      const category = await this.prisma.category.findFirst({
+        where: { id: dto.categoryId, userId },
       });
       if (!category) throw new NotFoundException('Category not found');
     }
@@ -116,14 +117,16 @@ export class TransactionsService {
     });
   }
 
-  async delete(id: string) {
-    await this.findById(id);
+  async delete(userId: string, id: string) {
+    await this.findById(userId, id);
     await this.prisma.transaction.delete({ where: { id } });
     return { id };
   }
 
-  async deleteLast(source?: Source) {
-    const where: Prisma.TransactionWhereInput = source ? { source } : {};
+  async deleteLast(userId: string, source?: Source) {
+    const where: Prisma.TransactionWhereInput = source
+      ? { userId, source }
+      : { userId };
     const last = await this.prisma.transaction.findFirst({
       where,
       orderBy: { createdAt: 'desc' },
@@ -134,7 +137,7 @@ export class TransactionsService {
     return last;
   }
 
-  async summary(startDate?: string, endDate?: string) {
+  async summary(userId: string, startDate?: string, endDate?: string) {
     const now = new Date();
     const monthStart =
       startDate
@@ -148,7 +151,7 @@ export class TransactionsService {
 
     const sumFor = async (from: Date, to: Date, type: Type) => {
       const res = await this.prisma.transaction.aggregate({
-        where: { type, date: { gte: from, lte: to } },
+        where: { userId, type, date: { gte: from, lte: to } },
         _sum: { amount: true },
         _count: true,
       });

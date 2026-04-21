@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Sidebar, MobileNav } from '@/components/navigation';
 import { ToastProvider } from '@/components/ui/toast';
+import { AuthProvider } from '@/contexts/auth-context';
+import { AppShell } from '@/components/app-shell';
 import { STRINGS } from '@/constants/strings';
 
 export const metadata: Metadata = {
@@ -25,17 +26,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background text-foreground">
-        <ToastProvider>
-          <div className="flex min-h-screen">
-            <Sidebar />
-            <main className="flex-1 min-w-0 pb-20 lg:pb-0">
-              <div className="mx-auto max-w-[1040px] px-6 py-8 page-fade">
-                {children}
-              </div>
-            </main>
-          </div>
-          <MobileNav />
-        </ToastProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AppShell>{children}</AppShell>
+          </ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -7,9 +7,11 @@ import {
   Receipt,
   BarChart3,
   Tags,
+  LogOut,
 } from 'lucide-react';
 import { STRINGS } from '@/constants/strings';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-context';
 
 const NAV_ITEMS = [
   { href: '/', label: STRINGS.nav.overview, icon: LayoutDashboard },
@@ -24,6 +26,7 @@ function isActive(pathname: string, href: string) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   return (
     <aside className="hidden lg:flex flex-col w-[240px] shrink-0 h-screen sticky top-0 border-r border-border bg-surface">
       <div className="px-6 pt-7 pb-6 border-b border-borderSoft">
@@ -67,7 +70,23 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="px-6 py-4 border-t border-borderSoft">
+      {user && (
+        <div className="px-3 py-3 border-t border-borderSoft">
+          <div className="px-3 pb-2">
+            <div className="text-[13px] font-medium truncate">{user.name}</div>
+            <div className="text-[11.5px] text-muted truncate">{user.phone}</div>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded text-[13px] text-foreground/80 hover:bg-surfaceAlt"
+          >
+            <LogOut className="h-[16px] w-[16px]" />
+            <span>Chiqish</span>
+          </button>
+        </div>
+      )}
+
+      <div className="px-6 py-3 border-t border-borderSoft">
         <p className="text-[11px] text-muted">
           © {new Date().getFullYear()} data365
         </p>

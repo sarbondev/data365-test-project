@@ -8,12 +8,12 @@ import { ConfigService } from '@nestjs/config';
 import { Telegraf, Markup, Context } from 'telegraf';
 import { message } from 'telegraf/filters';
 import axios from 'axios';
-import { Category, Source, Type } from '@prisma/client';
+import { Category, Source, Type, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransactionsService } from '../transactions/transactions.service';
-import { CategoriesService } from '../categories/categories.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AIService } from '../ai/ai.service';
+import { AuthService } from '../auth/auth.service';
 import { ParsedIntent } from '../ai/ai.types';
 import { BOT_MESSAGES, CALLBACK } from './bot.constants';
 import {
@@ -31,6 +31,7 @@ interface PendingTx {
   note?: string;
   date?: Date;
   chatId: number;
+  userId: string;
 }
 
 @Injectable()
@@ -38,15 +39,14 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BotService.name);
   private bot: Telegraf | null = null;
   private readonly pending = new Map<number, PendingTx>();
-  private lastChatId: number | null = null;
 
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly txService: TransactionsService,
-    private readonly catService: CategoriesService,
     private readonly analyticsService: AnalyticsService,
     private readonly aiService: AIService,
+    private readonly authService: AuthService,
   ) {}
 
   async onModuleInit() {
@@ -72,16 +72,37 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   }
 
   private registerHandlers(bot: Telegraf) {
-    bot.start((ctx) => ctx.reply(BOT_MESSAGES.WELCOME));
+    bot.start(async (ctx) => {
+      // Telegraf parses `/start <payload>` into ctx.startPayload
+      const payload = (ctx as Context & { startPayload?: string }).startPayload;
+      if (payload?.startsWith('verify_')) {
+        await this.handleVerifyDeepLink(ctx, payload.slice('verify_'.length));
+        return;
+      }
+
+      const user = await this.authService.findUserByChatId(String(ctx.chat.id));
+      if (user) {
+        await ctx.reply(
+          `👋 Salom, ${user.name}! Botga xush kelibsiz.\n\n${BOT_MESSAGES.WELCOME}`,
+        );
+      } else {
+        const url = this.dashboardUrl();
+        await ctx.reply(
+          `${BOT_MESSAGES.NOT_REGISTERED}\n${url}/register`,
+        );
+      }
+    });
+
     bot.command('cancel', (ctx) => {
       this.pending.delete(ctx.chat.id);
       return ctx.reply(BOT_MESSAGES.CANCELLED);
     });
 
     bot.on(message('text'), async (ctx) => {
-      this.lastChatId = ctx.chat.id;
+      const user = await this.requireUser(ctx);
+      if (!user) return;
       try {
-        await this.handleText(ctx, ctx.message.text);
+        await this.handleText(ctx, user, ctx.message.text);
       } catch (e) {
         this.logger.error('Text handler failed', e as Error);
         await ctx.reply(BOT_MESSAGES.GENERIC_ERROR);
@@ -89,7 +110,8 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     });
 
     bot.on(message('voice'), async (ctx) => {
-      this.lastChatId = ctx.chat.id;
+      const user = await this.requireUser(ctx);
+      if (!user) return;
       const processing = await ctx.reply(BOT_MESSAGES.PROCESSING);
       try {
         const fileId = ctx.message.voice.file_id;
@@ -101,7 +123,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         const text = await this.aiService.transcribeVoice(buf);
         await ctx.telegram.deleteMessage(ctx.chat.id, processing.message_id);
         await ctx.reply(`🎙 "${text}"`);
-        await this.handleText(ctx, text);
+        await this.handleText(ctx, user, text);
       } catch (e) {
         this.logger.error('Voice handler failed', e as Error);
         await ctx.reply(BOT_MESSAGES.GENERIC_ERROR);
@@ -119,7 +141,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       }
       await ctx.answerCbQuery();
       try {
-        const tx = await this.txService.create({
+        const tx = await this.txService.create(pending.userId, {
           type: pending.type,
           amount: pending.amount,
           categoryId,
@@ -133,7 +155,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
             reply_markup: this.txActionsKeyboard(tx.id).reply_markup,
           });
         }
-        await this.checkBudget(chatId, tx.categoryId);
+        await this.checkBudget(pending.userId, chatId, tx.categoryId);
       } catch (e) {
         this.logger.error('Save from pick failed', e as Error);
         await ctx.reply(BOT_MESSAGES.GENERIC_ERROR);
@@ -142,8 +164,15 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
     bot.action(new RegExp(`^${CALLBACK.DELETE_TX}:(.+)$`), async (ctx) => {
       const txId = ctx.match[1];
+      const user = await this.authService.findUserByChatId(
+        String(ctx.chat?.id ?? ''),
+      );
+      if (!user) {
+        await ctx.answerCbQuery();
+        return;
+      }
       try {
-        await this.txService.delete(txId);
+        await this.txService.delete(user.id, txId);
         await ctx.answerCbQuery("O'chirildi");
         if (ctx.callbackQuery.message) {
           await ctx.editMessageText("🗑 Tranzaksiya o'chirildi");
@@ -154,10 +183,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     });
 
     bot.action(new RegExp(`^${CALLBACK.EDIT_TX}:(.+)$`), async (ctx) => {
-      const url = this.config.get<string>(
-        'FRONTEND_URL',
-        'http://localhost:3000',
-      );
+      const url = this.dashboardUrl();
       await ctx.answerCbQuery();
       await ctx.reply(
         `✏️ Tahrirlash uchun web-dashboardga o'ting:\n${url}/transactions`,
@@ -174,6 +200,31 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /** Returns the user for this chat, or replies with the register prompt and returns null. */
+  private async requireUser(ctx: Context): Promise<User | null> {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return null;
+    const user = await this.authService.findUserByChatId(String(chatId));
+    if (!user) {
+      await ctx.reply(`${BOT_MESSAGES.NOT_REGISTERED}\n${this.dashboardUrl()}/register`);
+      return null;
+    }
+    return user;
+  }
+
+  private async handleVerifyDeepLink(ctx: Context, token: string) {
+    if (!ctx.chat) return;
+    const result = await this.authService.bindChatToOtp(
+      token,
+      String(ctx.chat.id),
+    );
+    if (!result) {
+      await ctx.reply(BOT_MESSAGES.VERIFY_INVALID);
+      return;
+    }
+    await ctx.replyWithHTML(BOT_MESSAGES.VERIFY_OK(result.code));
+  }
+
   private txActionsKeyboard(txId: string) {
     return Markup.inlineKeyboard([
       [
@@ -183,9 +234,9 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     ]);
   }
 
-  private async categoryPickerKeyboard(type: Type) {
+  private async categoryPickerKeyboard(userId: string, type: Type) {
     const cats = await this.prisma.category.findMany({
-      where: { type },
+      where: { userId, type },
       orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
     });
     const buttons = cats.map((c) =>
@@ -202,9 +253,10 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     return Markup.inlineKeyboard(rows);
   }
 
-  private async handleText(ctx: Context, text: string) {
+  private async handleText(ctx: Context, user: User, text: string) {
     if (!ctx.chat) return;
     const cats = await this.prisma.category.findMany({
+      where: { userId: user.id },
       select: { name: true, type: true },
     });
 
@@ -212,12 +264,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     this.logger.debug(`Intent: ${JSON.stringify(intent)}`);
 
     if (intent.action === 'DELETE_LAST') {
-      await this.handleDeleteLast(ctx);
+      await this.handleDeleteLast(ctx, user);
       return;
     }
 
     if (intent.action === 'QUERY') {
-      await this.handleQuery(ctx, intent);
+      await this.handleQuery(ctx, user, intent);
       return;
     }
 
@@ -229,7 +281,6 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    // LOG_INCOME or LOG_EXPENSE
     if (intent.clarificationNeeded || !intent.amount || intent.amount <= 0) {
       await ctx.reply(
         intent.clarificationQuestion ?? BOT_MESSAGES.AMOUNT_REQUIRED,
@@ -241,11 +292,11 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       intent.action === 'LOG_INCOME' ? 'INCOME' : 'EXPENSE';
     const date = intent.date ? new Date(intent.date) : new Date();
 
-    // Find category
     let category: Category | null = null;
     if (intent.categoryGuess) {
       category = await this.prisma.category.findFirst({
         where: {
+          userId: user.id,
           type,
           name: { equals: intent.categoryGuess, mode: 'insensitive' },
         },
@@ -253,21 +304,20 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!category) {
-      // Stash pending and ask user to pick
       this.pending.set(ctx.chat.id, {
         type,
         amount: intent.amount,
         note: intent.note,
         date,
         chatId: ctx.chat.id,
+        userId: user.id,
       });
-      const kb = await this.categoryPickerKeyboard(type);
+      const kb = await this.categoryPickerKeyboard(user.id, type);
       await ctx.reply(categoryPickerMessage(type), kb);
       return;
     }
 
-    // Save directly
-    const tx = await this.txService.create({
+    const tx = await this.txService.create(user.id, {
       type,
       amount: intent.amount,
       categoryId: category.id,
@@ -281,12 +331,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       this.txActionsKeyboard(tx.id),
     );
 
-    await this.checkBudget(ctx.chat.id, category.id);
+    await this.checkBudget(user.id, ctx.chat.id, category.id);
   }
 
-  private async handleDeleteLast(ctx: Context) {
+  private async handleDeleteLast(ctx: Context, user: User) {
     try {
-      const last = await this.txService.deleteLast(Source.TELEGRAM);
+      const last = await this.txService.deleteLast(user.id, Source.TELEGRAM);
       await ctx.reply(
         `🗑 So'nggi tranzaksiya o'chirildi:\n${formatAmount(last.amount)} so'm — ${last.category.name}`,
       );
@@ -295,7 +345,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async handleQuery(ctx: Context, intent: ParsedIntent) {
+  private async handleQuery(ctx: Context, user: User, intent: ParsedIntent) {
     const period =
       intent.queryType === 'THIS_WEEK'
         ? 'week'
@@ -308,7 +358,10 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       const name = intent.queryCategory ?? intent.categoryGuess;
       if (name) {
         category = await this.prisma.category.findFirst({
-          where: { name: { equals: name, mode: 'insensitive' } },
+          where: {
+            userId: user.id,
+            name: { equals: name, mode: 'insensitive' },
+          },
         });
       }
     }
@@ -316,7 +369,11 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     if (category) {
       const { start, end } = this.analyticsService.resolvePeriod(period);
       const txs = await this.prisma.transaction.findMany({
-        where: { categoryId: category.id, date: { gte: start, lte: end } },
+        where: {
+          userId: user.id,
+          categoryId: category.id,
+          date: { gte: start, lte: end },
+        },
         orderBy: { amount: 'desc' },
       });
       const total = txs.reduce((s, t) => s + t.amount, 0);
@@ -346,8 +403,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    // Generic period summary
-    const overview = await this.analyticsService.overview(period);
+    const overview = await this.analyticsService.overview(user.id, period);
     const periodLabel =
       period === 'week'
         ? 'Shu hafta'
@@ -365,9 +421,13 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  private async checkBudget(chatId: number, categoryId: string) {
-    const cat = await this.prisma.category.findUnique({
-      where: { id: categoryId },
+  private async checkBudget(
+    userId: string,
+    chatId: number,
+    categoryId: string,
+  ) {
+    const cat = await this.prisma.category.findFirst({
+      where: { id: categoryId, userId },
     });
     if (!cat || !cat.budget || cat.budget <= 0 || cat.type !== 'EXPENSE')
       return;
@@ -385,6 +445,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
     const agg = await this.prisma.transaction.aggregate({
       where: {
+        userId,
         categoryId,
         type: 'EXPENSE',
         date: { gte: monthStart, lte: monthEnd },
@@ -407,5 +468,9 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         budgetWarningMessage(cat, spent, cat.budget),
       );
     }
+  }
+
+  private dashboardUrl(): string {
+    return this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
   }
 }

@@ -7,8 +7,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  phone          String   @unique
+  passwordHash   String
+  telegramChatId String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transactions Transaction[]
+  categories   Category[]
+}
+
+model OtpVerification {
+  id           String   @id @default(cuid())
+  phone        String
+  code         String
+  token        String   @unique
+  name         String
+  passwordHash String
+  chatId       String?
+  verified     Boolean  @default(false)
+  attempts     Int      @default(0)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([phone])
+}
+
 model Transaction {
   id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   type       Type
   amount     Float
   categoryId String
@@ -19,13 +50,15 @@ model Transaction {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@index([date])
-  @@index([type])
+  @@index([userId, date])
+  @@index([userId, type])
   @@index([categoryId])
 }
 
 model Category {
   id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
   type         Type
   color        String
@@ -35,7 +68,8 @@ model Category {
   transactions Transaction[]
   createdAt    DateTime      @default(now())
 
-  @@unique([name, type])
+  @@unique([userId, name, type])
+  @@index([userId])
 }
 
 enum Type {

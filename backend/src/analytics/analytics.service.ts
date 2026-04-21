@@ -42,7 +42,12 @@ export class AnalyticsService {
     return { start, end, prevStart, prevEnd };
   }
 
-  async overview(period?: Period, startDate?: string, endDate?: string) {
+  async overview(
+    userId: string,
+    period?: Period,
+    startDate?: string,
+    endDate?: string,
+  ) {
     const { start, end, prevStart, prevEnd } = this.resolvePeriod(
       period,
       startDate,
@@ -51,7 +56,7 @@ export class AnalyticsService {
 
     const sumFor = async (from: Date, to: Date, type: Type) => {
       const r = await this.prisma.transaction.aggregate({
-        where: { type, date: { gte: from, lte: to } },
+        where: { userId, type, date: { gte: from, lte: to } },
         _sum: { amount: true },
         _count: true,
       });
@@ -70,21 +75,20 @@ export class AnalyticsService {
       return ((curr - prev) / prev) * 100;
     };
 
-    // Stats: avg daily expense, biggest single expense, most active category
     const days = Math.max(
       1,
       Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
     );
 
     const biggestExpense = await this.prisma.transaction.findFirst({
-      where: { type: 'EXPENSE', date: { gte: start, lte: end } },
+      where: { userId, type: 'EXPENSE', date: { gte: start, lte: end } },
       orderBy: { amount: 'desc' },
       include: { category: true },
     });
 
     const mostActive = await this.prisma.transaction.groupBy({
       by: ['categoryId'],
-      where: { date: { gte: start, lte: end } },
+      where: { userId, date: { gte: start, lte: end } },
       _count: true,
       orderBy: { _count: { categoryId: 'desc' } },
       take: 1,
@@ -141,6 +145,7 @@ export class AnalyticsService {
   }
 
   async byCategory(
+    userId: string,
     period?: Period,
     startDate?: string,
     endDate?: string,
@@ -151,6 +156,7 @@ export class AnalyticsService {
     const grouped = await this.prisma.transaction.groupBy({
       by: ['categoryId'],
       where: {
+        userId,
         date: { gte: start, lte: end },
         ...(type && { type }),
       },
@@ -159,7 +165,7 @@ export class AnalyticsService {
     });
 
     const cats = await this.prisma.category.findMany({
-      where: { id: { in: grouped.map((g) => g.categoryId) } },
+      where: { userId, id: { in: grouped.map((g) => g.categoryId) } },
     });
     const catMap = new Map(cats.map((c) => [c.id, c]));
 
@@ -195,10 +201,14 @@ export class AnalyticsService {
     return { period: { start, end }, items };
   }
 
-  async trend(period?: Period, startDate?: string, endDate?: string) {
+  async trend(
+    userId: string,
+    period?: Period,
+    startDate?: string,
+    endDate?: string,
+  ) {
     const { start, end } = this.resolvePeriod(period, startDate, endDate);
 
-    // PostgreSQL date_trunc to group by day
     const rows = await this.prisma.$queryRaw<
       Array<{ day: Date; type: Type; total: number }>
     >`
@@ -206,7 +216,8 @@ export class AnalyticsService {
              "type",
              SUM("amount")::float AS total
       FROM "Transaction"
-      WHERE "date" >= ${start} AND "date" <= ${end}
+      WHERE "userId" = ${userId}
+        AND "date" >= ${start} AND "date" <= ${end}
       GROUP BY 1, 2
       ORDER BY 1 ASC
     `;
@@ -216,7 +227,6 @@ export class AnalyticsService {
       { date: string; income: number; expense: number }
     >();
 
-    // Pre-fill all days
     const cur = new Date(start);
     cur.setHours(0, 0, 0, 0);
     while (cur <= end) {
@@ -241,7 +251,7 @@ export class AnalyticsService {
     };
   }
 
-  async budgetStatus() {
+  async budgetStatus(userId: string) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(
@@ -255,12 +265,13 @@ export class AnalyticsService {
     );
 
     const cats = await this.prisma.category.findMany({
-      where: { type: 'EXPENSE', budget: { not: null, gt: 0 } },
+      where: { userId, type: 'EXPENSE', budget: { not: null, gt: 0 } },
     });
 
     const totals = await this.prisma.transaction.groupBy({
       by: ['categoryId'],
       where: {
+        userId,
         type: 'EXPENSE',
         date: { gte: monthStart, lte: monthEnd },
         categoryId: { in: cats.map((c) => c.id) },

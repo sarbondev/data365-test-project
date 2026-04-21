@@ -1,11 +1,13 @@
 import type {
   ApiResponse,
+  AuthUser,
   BudgetResponse,
   ByCategoryResponse,
   Category,
   OverviewResponse,
   PaginatedTransactions,
   Period,
+  RegisterStartResponse,
   Transaction,
   TrendResponse,
   TxType,
@@ -41,6 +43,7 @@ async function request<T>(
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
+    credentials: 'include',
     cache: 'no-store',
   });
 
@@ -99,7 +102,42 @@ export interface UpdateCategoryInput {
   budget?: number | null;
 }
 
+export interface RegisterInput {
+  name: string;
+  phone: string;
+  password: string;
+}
+
+export interface VerifyOtpInput {
+  token: string;
+  code: string;
+}
+
+export interface LoginInput {
+  phone: string;
+  password: string;
+}
+
 export const api = {
+  auth: {
+    register: (input: RegisterInput) =>
+      request<RegisterStartResponse>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    verify: (input: VerifyOtpInput) =>
+      request<AuthUser>('/auth/verify', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    login: (input: LoginInput) =>
+      request<AuthUser>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
+    me: () => request<AuthUser>('/auth/me'),
+  },
   transactions: {
     list: (filters: TransactionFilters = {}) =>
       request<PaginatedTransactions>('/transactions', { query: filters }),
