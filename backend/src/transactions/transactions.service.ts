@@ -1,10 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma, Source, Type } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { LocalizedException } from '../common/localized.exception';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { ListTransactionsDto } from './dto/list-transactions.dto';
@@ -57,22 +54,34 @@ export class TransactionsService {
       where: { id, userId },
       include: { category: true },
     });
-    if (!tx) throw new NotFoundException('Transaction not found');
+    if (!tx)
+      throw new LocalizedException(
+        HttpStatus.NOT_FOUND,
+        'transactions.notFound',
+      );
     return tx;
   }
 
   async create(userId: string, dto: CreateTransactionDto) {
     if (dto.amount <= 0) {
-      throw new BadRequestException('Amount must be positive');
+      throw new LocalizedException(
+        HttpStatus.BAD_REQUEST,
+        'transactions.amountPositive',
+      );
     }
 
     const category = await this.prisma.category.findFirst({
       where: { id: dto.categoryId, userId },
     });
-    if (!category) throw new NotFoundException('Category not found');
+    if (!category)
+      throw new LocalizedException(
+        HttpStatus.NOT_FOUND,
+        'categories.notFound',
+      );
     if (category.type !== dto.type) {
-      throw new BadRequestException(
-        `Category type (${category.type}) does not match transaction type (${dto.type})`,
+      throw new LocalizedException(
+        HttpStatus.BAD_REQUEST,
+        'transactions.categoryMismatch',
       );
     }
 
@@ -94,14 +103,21 @@ export class TransactionsService {
     await this.findById(userId, id);
 
     if (dto.amount !== undefined && dto.amount <= 0) {
-      throw new BadRequestException('Amount must be positive');
+      throw new LocalizedException(
+        HttpStatus.BAD_REQUEST,
+        'transactions.amountPositive',
+      );
     }
 
     if (dto.categoryId) {
       const category = await this.prisma.category.findFirst({
         where: { id: dto.categoryId, userId },
       });
-      if (!category) throw new NotFoundException('Category not found');
+      if (!category)
+      throw new LocalizedException(
+        HttpStatus.NOT_FOUND,
+        'categories.notFound',
+      );
     }
 
     return this.prisma.transaction.update({
@@ -132,7 +148,11 @@ export class TransactionsService {
       orderBy: { createdAt: 'desc' },
       include: { category: true },
     });
-    if (!last) throw new NotFoundException('No transactions to delete');
+    if (!last)
+      throw new LocalizedException(
+        HttpStatus.NOT_FOUND,
+        'transactions.noneToDelete',
+      );
     await this.prisma.transaction.delete({ where: { id: last.id } });
     return last;
   }

@@ -13,6 +13,7 @@ model User {
   phone          String   @unique
   passwordHash   String
   telegramChatId String?  @unique
+  locale         Locale   @default(uz)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -27,6 +28,7 @@ model OtpVerification {
   token        String   @unique
   name         String
   passwordHash String
+  locale       Locale   @default(uz)
   chatId       String?
   verified     Boolean  @default(false)
   attempts     Int      @default(0)
@@ -80,4 +82,9 @@ enum Type {
 enum Source {
   DASHBOARD
   TELEGRAM
+}
+
+enum Locale {
+  uz
+  ru
 }

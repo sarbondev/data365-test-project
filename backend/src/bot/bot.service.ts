@@ -8,20 +8,21 @@ import { ConfigService } from '@nestjs/config';
 import { Telegraf, Markup, Context } from 'telegraf';
 import { message } from 'telegraf/filters';
 import axios from 'axios';
-import { Category, Source, Type, User } from '@prisma/client';
+import { Category, Locale, Source, Type, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AIService } from '../ai/ai.service';
 import { AuthService } from '../auth/auth.service';
 import { ParsedIntent } from '../ai/ai.types';
-import { BOT_MESSAGES, CALLBACK } from './bot.constants';
+import { botMessages, CALLBACK } from './bot.constants';
 import {
   budgetExceededMessage,
   budgetWarningMessage,
   categoryPickerMessage,
+  currency,
   formatAmount,
-  formatUzDate,
+  formatShortDate,
   txConfirmationMessage,
 } from './bot.format';
 
@@ -63,7 +64,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
     this.bot
       .launch({ dropPendingUpdates: true })
-      .catch((e) => this.logger.error('Bot launch failed', e as Error));
+      .catch((e) => this.logger.warn(`Bot launch failed: ${(e as Error).message}`));
     this.logger.log('🤖 Telegram bot started (polling)');
   }
 
@@ -73,7 +74,6 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
   private registerHandlers(bot: Telegraf) {
     bot.start(async (ctx) => {
-      // Telegraf parses `/start <payload>` into ctx.startPayload
       const payload = (ctx as Context & { startPayload?: string }).startPayload;
       if (payload?.startsWith('verify_')) {
         await this.handleVerifyDeepLink(ctx, payload.slice('verify_'.length));
@@ -82,20 +82,21 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
       const user = await this.authService.findUserByChatId(String(ctx.chat.id));
       if (user) {
+        const msg = botMessages(user.locale);
         await ctx.reply(
-          `👋 Salom, ${user.name}! Botga xush kelibsiz.\n\n${BOT_MESSAGES.WELCOME}`,
+          `👋 ${user.locale === 'ru' ? 'Здравствуйте' : 'Salom'}, ${user.name}!\n\n${msg.WELCOME}`,
         );
       } else {
+        const msg = botMessages('uz');
         const url = this.dashboardUrl();
-        await ctx.reply(
-          `${BOT_MESSAGES.NOT_REGISTERED}\n${url}/register`,
-        );
+        await ctx.reply(`${msg.NOT_REGISTERED}\n${url}/register`);
       }
     });
 
-    bot.command('cancel', (ctx) => {
+    bot.command('cancel', async (ctx) => {
       this.pending.delete(ctx.chat.id);
-      return ctx.reply(BOT_MESSAGES.CANCELLED);
+      const locale = await this.localeFor(ctx);
+      return ctx.reply(botMessages(locale).CANCELLED);
     });
 
     bot.on(message('text'), async (ctx) => {
@@ -104,15 +105,16 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       try {
         await this.handleText(ctx, user, ctx.message.text);
       } catch (e) {
-        this.logger.error('Text handler failed', e as Error);
-        await ctx.reply(BOT_MESSAGES.GENERIC_ERROR);
+        this.logger.warn(`Text handler skipped: ${(e as Error).message}`);
+        await ctx.reply(botMessages(user.locale).GENERIC_ERROR);
       }
     });
 
     bot.on(message('voice'), async (ctx) => {
       const user = await this.requireUser(ctx);
       if (!user) return;
-      const processing = await ctx.reply(BOT_MESSAGES.PROCESSING);
+      const msg = botMessages(user.locale);
+      const processing = await ctx.reply(msg.PROCESSING);
       try {
         const fileId = ctx.message.voice.file_id;
         const link = await ctx.telegram.getFileLink(fileId);
@@ -121,12 +123,18 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         });
         const buf = Buffer.from(audioRes.data);
         const text = await this.aiService.transcribeVoice(buf);
-        await ctx.telegram.deleteMessage(ctx.chat.id, processing.message_id);
+        await ctx.telegram
+          .deleteMessage(ctx.chat.id, processing.message_id)
+          .catch(() => void 0);
+        if (!text) {
+          await ctx.reply(msg.AI_UNAVAILABLE);
+          return;
+        }
         await ctx.reply(`🎙 "${text}"`);
         await this.handleText(ctx, user, text);
       } catch (e) {
-        this.logger.error('Voice handler failed', e as Error);
-        await ctx.reply(BOT_MESSAGES.GENERIC_ERROR);
+        this.logger.warn(`Voice handler skipped: ${(e as Error).message}`);
+        await ctx.reply(msg.GENERIC_ERROR);
       }
     });
 
@@ -135,8 +143,10 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       const chatId = ctx.chat?.id;
       if (!chatId) return;
       const pending = this.pending.get(chatId);
+      const locale = await this.localeFor(ctx);
+      const msg = botMessages(locale);
       if (!pending) {
-        await ctx.answerCbQuery('Tranzaksiya topilmadi');
+        await ctx.answerCbQuery(msg.TX_NOT_FOUND);
         return;
       }
       await ctx.answerCbQuery();
@@ -151,14 +161,14 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         });
         this.pending.delete(chatId);
         if (ctx.callbackQuery.message) {
-          await ctx.editMessageText(txConfirmationMessage(tx), {
-            reply_markup: this.txActionsKeyboard(tx.id).reply_markup,
+          await ctx.editMessageText(txConfirmationMessage(tx, locale), {
+            reply_markup: this.txActionsKeyboard(tx.id, locale).reply_markup,
           });
         }
-        await this.checkBudget(pending.userId, chatId, tx.categoryId);
+        await this.checkBudget(pending.userId, chatId, tx.categoryId, locale);
       } catch (e) {
-        this.logger.error('Save from pick failed', e as Error);
-        await ctx.reply(BOT_MESSAGES.GENERIC_ERROR);
+        this.logger.warn(`Save from pick skipped: ${(e as Error).message}`);
+        await ctx.reply(msg.GENERIC_ERROR);
       }
     });
 
@@ -171,42 +181,53 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         await ctx.answerCbQuery();
         return;
       }
+      const msg = botMessages(user.locale);
       try {
         await this.txService.delete(user.id, txId);
-        await ctx.answerCbQuery("O'chirildi");
+        await ctx.answerCbQuery(msg.DELETED);
         if (ctx.callbackQuery.message) {
-          await ctx.editMessageText("🗑 Tranzaksiya o'chirildi");
+          await ctx.editMessageText(`🗑 ${msg.DELETED}`);
         }
       } catch {
-        await ctx.answerCbQuery("O'chirib bo'lmadi");
+        await ctx.answerCbQuery(msg.DELETE_FAILED);
       }
     });
 
     bot.action(new RegExp(`^${CALLBACK.EDIT_TX}:(.+)$`), async (ctx) => {
+      const locale = await this.localeFor(ctx);
       const url = this.dashboardUrl();
       await ctx.answerCbQuery();
-      await ctx.reply(
-        `✏️ Tahrirlash uchun web-dashboardga o'ting:\n${url}/transactions`,
-      );
+      await ctx.reply(botMessages(locale).EDIT_REDIRECT(url));
     });
 
     bot.action(CALLBACK.CANCEL, async (ctx) => {
       const chatId = ctx.chat?.id;
       if (chatId) this.pending.delete(chatId);
-      await ctx.answerCbQuery('Bekor qilindi');
+      const locale = await this.localeFor(ctx);
+      const msg = botMessages(locale);
+      await ctx.answerCbQuery(msg.CANCELLED);
       if (ctx.callbackQuery.message) {
-        await ctx.editMessageText(BOT_MESSAGES.CANCELLED);
+        await ctx.editMessageText(msg.CANCELLED);
       }
     });
   }
 
-  /** Returns the user for this chat, or replies with the register prompt and returns null. */
+  private async localeFor(ctx: Context): Promise<Locale> {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return 'uz';
+    const user = await this.authService.findUserByChatId(String(chatId));
+    return user?.locale ?? 'uz';
+  }
+
   private async requireUser(ctx: Context): Promise<User | null> {
     const chatId = ctx.chat?.id;
     if (!chatId) return null;
     const user = await this.authService.findUserByChatId(String(chatId));
     if (!user) {
-      await ctx.reply(`${BOT_MESSAGES.NOT_REGISTERED}\n${this.dashboardUrl()}/register`);
+      const msg = botMessages('uz');
+      await ctx.reply(
+        `${msg.NOT_REGISTERED}\n${this.dashboardUrl()}/register`,
+      );
       return null;
     }
     return user;
@@ -219,22 +240,27 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       String(ctx.chat.id),
     );
     if (!result) {
-      await ctx.reply(BOT_MESSAGES.VERIFY_INVALID);
+      await ctx.reply(botMessages('uz').VERIFY_INVALID);
       return;
     }
-    await ctx.replyWithHTML(BOT_MESSAGES.VERIFY_OK(result.code));
+    await ctx.replyWithHTML(botMessages(result.locale).VERIFY_OK(result.code));
   }
 
-  private txActionsKeyboard(txId: string) {
+  private txActionsKeyboard(txId: string, locale: Locale) {
+    const msg = botMessages(locale);
     return Markup.inlineKeyboard([
       [
-        Markup.button.callback('✏️ Tahrirlash', `${CALLBACK.EDIT_TX}:${txId}`),
-        Markup.button.callback("🗑 O'chirish", `${CALLBACK.DELETE_TX}:${txId}`),
+        Markup.button.callback(msg.EDIT_BTN, `${CALLBACK.EDIT_TX}:${txId}`),
+        Markup.button.callback(msg.DELETE_BTN, `${CALLBACK.DELETE_TX}:${txId}`),
       ],
     ]);
   }
 
-  private async categoryPickerKeyboard(userId: string, type: Type) {
+  private async categoryPickerKeyboard(
+    userId: string,
+    type: Type,
+    locale: Locale,
+  ) {
     const cats = await this.prisma.category.findMany({
       where: { userId, type },
       orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
@@ -249,18 +275,19 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     for (let i = 0; i < buttons.length; i += 2) {
       rows.push(buttons.slice(i, i + 2));
     }
-    rows.push([Markup.button.callback("❌ Bekor qilish", CALLBACK.CANCEL)]);
+    rows.push([Markup.button.callback(botMessages(locale).CANCEL_BTN, CALLBACK.CANCEL)]);
     return Markup.inlineKeyboard(rows);
   }
 
   private async handleText(ctx: Context, user: User, text: string) {
     if (!ctx.chat) return;
+    const msg = botMessages(user.locale);
     const cats = await this.prisma.category.findMany({
       where: { userId: user.id },
       select: { name: true, type: true },
     });
 
-    const intent = await this.aiService.parseIntent(text, cats);
+    const intent = await this.aiService.parseIntent(text, cats, user.locale);
     this.logger.debug(`Intent: ${JSON.stringify(intent)}`);
 
     if (intent.action === 'DELETE_LAST') {
@@ -274,22 +301,16 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (intent.action === 'UNCLEAR') {
-      await ctx.reply(
-        intent.clarificationQuestion ??
-          "❓ Tushunmadim. Masalan yozing: \"Bugun ijaraga 3 mln so'm\"",
-      );
+      await ctx.reply(intent.clarificationQuestion ?? msg.UNCLEAR_FALLBACK);
       return;
     }
 
     if (intent.clarificationNeeded || !intent.amount || intent.amount <= 0) {
-      await ctx.reply(
-        intent.clarificationQuestion ?? BOT_MESSAGES.AMOUNT_REQUIRED,
-      );
+      await ctx.reply(intent.clarificationQuestion ?? msg.AMOUNT_REQUIRED);
       return;
     }
 
-    const type: Type =
-      intent.action === 'LOG_INCOME' ? 'INCOME' : 'EXPENSE';
+    const type: Type = intent.action === 'LOG_INCOME' ? 'INCOME' : 'EXPENSE';
     const date = intent.date ? new Date(intent.date) : new Date();
 
     let category: Category | null = null;
@@ -312,8 +333,8 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         chatId: ctx.chat.id,
         userId: user.id,
       });
-      const kb = await this.categoryPickerKeyboard(user.id, type);
-      await ctx.reply(categoryPickerMessage(type), kb);
+      const kb = await this.categoryPickerKeyboard(user.id, type, user.locale);
+      await ctx.reply(categoryPickerMessage(type, user.locale), kb);
       return;
     }
 
@@ -327,31 +348,59 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     });
 
     await ctx.reply(
-      txConfirmationMessage(tx),
-      this.txActionsKeyboard(tx.id),
+      txConfirmationMessage(tx, user.locale),
+      this.txActionsKeyboard(tx.id, user.locale),
     );
 
-    await this.checkBudget(user.id, ctx.chat.id, category.id);
+    await this.checkBudget(user.id, ctx.chat.id, category.id, user.locale);
   }
 
   private async handleDeleteLast(ctx: Context, user: User) {
+    const msg = botMessages(user.locale);
     try {
       const last = await this.txService.deleteLast(user.id, Source.TELEGRAM);
       await ctx.reply(
-        `🗑 So'nggi tranzaksiya o'chirildi:\n${formatAmount(last.amount)} so'm — ${last.category.name}`,
+        msg.DELETE_LAST_OK(formatAmount(last.amount), last.category.name),
       );
     } catch {
-      await ctx.reply(BOT_MESSAGES.NO_LAST_TX);
+      await ctx.reply(msg.NO_LAST_TX);
     }
   }
 
   private async handleQuery(ctx: Context, user: User, intent: ParsedIntent) {
+    const locale = user.locale;
+    const cur = currency(locale);
     const period =
       intent.queryType === 'THIS_WEEK'
         ? 'week'
         : intent.queryType === 'LAST_MONTH'
           ? 'last-month'
           : 'month';
+
+    const periodLabels: Record<Locale, Record<string, string>> = {
+      uz: { week: 'Shu hafta', 'last-month': "O'tgan oy", month: 'Bu oy' },
+      ru: { week: 'Эта неделя', 'last-month': 'Прошлый месяц', month: 'Этот месяц' },
+    };
+    const reportLabels: Record<Locale, { report: string; income: string; expense: string; net: string; total: string; txCount: string; top: string }> = {
+      uz: {
+        report: "bo'yicha hisobot",
+        income: 'Kirim',
+        expense: 'Xarajat',
+        net: 'Sof',
+        total: 'Jami',
+        txCount: 'ta tranzaksiya',
+        top: 'Top',
+      },
+      ru: {
+        report: '— отчёт',
+        income: 'Доход',
+        expense: 'Расход',
+        net: 'Чистый',
+        total: 'Всего',
+        txCount: 'транзакций',
+        top: 'Топ',
+      },
+    };
 
     let category: Category | null = null;
     if (intent.queryCategory || intent.categoryGuess) {
@@ -378,25 +427,19 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       });
       const total = txs.reduce((s, t) => s + t.amount, 0);
       const top = txs.slice(0, 3);
-      const periodLabel =
-        period === 'week'
-          ? 'Shu hafta'
-          : period === 'last-month'
-            ? "O'tgan oy"
-            : `${formatUzDate(start).split(' ').slice(1).join(' ')}`;
+      const r = reportLabels[locale];
 
       const lines = [
-        `📊 ${category.name} — ${periodLabel}`,
+        `📊 ${category.name} — ${periodLabels[locale][period]}`,
         '',
-        `${category.type === 'INCOME' ? '💰' : '💸'} Jami: ${formatAmount(total)} so'm`,
-        `📝 ${txs.length} ta tranzaksiya`,
+        `${category.type === 'INCOME' ? '💰' : '💸'} ${r.total}: ${formatAmount(total)} ${cur}`,
+        `📝 ${txs.length} ${r.txCount}`,
       ];
       if (top.length > 0) {
-        lines.push('', 'Top:');
+        lines.push('', `${r.top}:`);
         for (const t of top) {
-          const d = new Date(t.date);
-          const dStr = `${d.getDate()} ${['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'][d.getMonth()]}`;
-          lines.push(`• ${dStr} — ${formatAmount(t.amount)} so'm`);
+          const d = formatShortDate(new Date(t.date), locale);
+          lines.push(`• ${d} — ${formatAmount(t.amount)} ${cur}`);
         }
       }
       await ctx.reply(lines.join('\n'));
@@ -404,19 +447,14 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     }
 
     const overview = await this.analyticsService.overview(user.id, period);
-    const periodLabel =
-      period === 'week'
-        ? 'Shu hafta'
-        : period === 'last-month'
-          ? "O'tgan oy"
-          : 'Bu oy';
+    const r = reportLabels[locale];
     await ctx.reply(
       [
-        `📊 ${periodLabel} bo'yicha hisobot`,
+        `📊 ${periodLabels[locale][period]} ${r.report}`,
         '',
-        `💰 Kirim: ${formatAmount(overview.income.total)} so'm`,
-        `💸 Xarajat: ${formatAmount(overview.expense.total)} so'm`,
-        `📈 Sof: ${formatAmount(overview.net.total)} so'm`,
+        `💰 ${r.income}: ${formatAmount(overview.income.total)} ${cur}`,
+        `💸 ${r.expense}: ${formatAmount(overview.expense.total)} ${cur}`,
+        `📈 ${r.net}: ${formatAmount(overview.net.total)} ${cur}`,
       ].join('\n'),
     );
   }
@@ -425,6 +463,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     userId: string,
     chatId: number,
     categoryId: string,
+    locale: Locale,
   ) {
     const cat = await this.prisma.category.findFirst({
       where: { id: categoryId, userId },
@@ -460,12 +499,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     if (usage >= 100) {
       await this.bot.telegram.sendMessage(
         chatId,
-        budgetExceededMessage(cat, cat.budget),
+        budgetExceededMessage(cat, cat.budget, locale),
       );
     } else if (usage >= 80) {
       await this.bot.telegram.sendMessage(
         chatId,
-        budgetWarningMessage(cat, spent, cat.budget),
+        budgetWarningMessage(cat, spent, cat.budget, locale),
       );
     }
   }

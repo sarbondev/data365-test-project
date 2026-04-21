@@ -1,18 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI, { toFile } from 'openai';
+import { Locale } from '@prisma/client';
 import { ParsedIntent } from './ai.types';
 
 const SYSTEM_PROMPT = `You are a financial assistant for a small Uzbek business.
+The user writes in Uzbek or Russian — understand both, respond in the user's language.
 Parse the user message and return a JSON object:
 { action, amount, categoryGuess, note, date, queryType, clarificationNeeded, clarificationQuestion }
 
 Rules:
 - If amount is missing for a financial action → clarificationNeeded: true
-- If category is unclear → make a smart guess, set categoryGuess
-- Treat numbers without currency as UZS (so'm)
-- date: if not specified, use today. Support "bugun", "kecha", "today", "yesterday"
+- If category is unclear → make a smart guess, set categoryGuess (match available categories when possible)
+- Treat numbers without currency as UZS (so'm / сум)
+- date: if not specified, use today. Support "bugun"/"сегодня", "kecha"/"вчера", "today", "yesterday"
 - action QUERY = user is asking about their data
+- clarificationQuestion must be in the user's language (uz or ru)
 - Respond ONLY with valid JSON, no markdown, no extra text`;
 
 @Injectable()
@@ -25,18 +28,29 @@ export class AIService {
     this.client = new OpenAI({ apiKey });
   }
 
-  async transcribeVoice(audio: Buffer, filename = 'voice.ogg'): Promise<string> {
-    const file = await toFile(audio, filename);
-    const res = await this.client.audio.transcriptions.create({
-      file,
-      model: 'whisper-1',
-    });
-    return res.text;
+  async transcribeVoice(
+    audio: Buffer,
+    filename = 'voice.ogg',
+  ): Promise<string | null> {
+    try {
+      const file = await toFile(audio, filename);
+      const res = await this.client.audio.transcriptions.create({
+        file,
+        model: 'whisper-1',
+      });
+      return res.text;
+    } catch (e) {
+      this.logger.warn(
+        `Voice transcription unavailable: ${(e as Error).message}`,
+      );
+      return null;
+    }
   }
 
   async parseIntent(
     text: string,
     categories: Array<{ name: string; type: 'INCOME' | 'EXPENSE' }>,
+    locale: Locale = 'uz',
   ): Promise<ParsedIntent> {
     const today = new Date().toISOString().slice(0, 10);
     const catList = categories
@@ -44,11 +58,12 @@ export class AIService {
       .join(', ');
 
     const userPrompt = `Today: ${today}
+User language: ${locale}
 Available categories: ${catList}
 
 User message: "${text}"
 
-Return only JSON.`;
+Return only JSON. If you need clarification, write it in ${locale === 'ru' ? 'Russian' : 'Uzbek'}.`;
 
     try {
       const res = await this.client.chat.completions.create({
@@ -67,12 +82,16 @@ Return only JSON.`;
       if (!parsed.action) parsed.action = 'UNCLEAR';
       return parsed;
     } catch (e) {
-      this.logger.error('Intent parsing failed', e as Error);
+      this.logger.warn(
+        `Intent parsing unavailable: ${(e as Error).message}`,
+      );
       return {
         action: 'UNCLEAR',
         clarificationNeeded: true,
         clarificationQuestion:
-          "Iltimos, xabaringizni qayta yuboring. Masalan: \"Bugun ijaraga 3 mln so'm to'ladim\"",
+          locale === 'ru'
+            ? '🤖 AI временно недоступен. Попробуйте позже.'
+            : "🤖 AI vaqtincha ishlamayapti. Iltimos, birozdan keyin qayta urinib ko'ring.",
       };
     }
   }

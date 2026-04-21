@@ -10,7 +10,7 @@ import { TransactionsTable } from '@/components/transactions-table';
 import { FullPageSpinner, Spinner } from '@/components/ui/spinner';
 import { api } from '@/lib/api';
 import { isoDate } from '@/lib/utils';
-import { STRINGS } from '@/constants/strings';
+import { useTranslation } from '@/contexts/i18n-context';
 import type {
   Category,
   PaginatedTransactions,
@@ -18,6 +18,7 @@ import type {
 } from '@/lib/types';
 
 export default function TransactionsPage() {
+  const { t } = useTranslation();
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [data, setData] = React.useState<PaginatedTransactions | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -63,13 +64,13 @@ export default function TransactionsPage() {
   const exportCsv = () => {
     if (!data) return;
     const header = ['Date', 'Type', 'Category', 'Amount', 'Note', 'Source'];
-    const rows = data.items.map((t) => [
-      isoDate(new Date(t.date)),
-      t.type,
-      t.category.name,
-      String(t.amount),
-      (t.note ?? '').replace(/"/g, '""'),
-      t.source,
+    const rows = data.items.map((tx) => [
+      isoDate(new Date(tx.date)),
+      tx.type,
+      tx.category.name,
+      String(tx.amount),
+      (tx.note ?? '').replace(/"/g, '""'),
+      tx.source,
     ]);
     const csv = [header, ...rows]
       .map((r) => r.map((c) => `"${c}"`).join(','))
@@ -97,19 +98,17 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-[22px] font-medium">
-          {STRINGS.transactions.title}
-        </h1>
+        <h1 className="text-[22px] font-medium">{t('transactions.title')}</h1>
         <Button variant="outline" onClick={exportCsv}>
           <Download className="h-4 w-4" />
-          {STRINGS.transactions.export}
+          {t('transactions.export')}
         </Button>
       </header>
 
       <Card>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <Input
-            placeholder={STRINGS.common.search}
+            placeholder={t('common.search')}
             value={search}
             onChange={(e) => {
               setPage(1);
@@ -123,9 +122,9 @@ export default function TransactionsPage() {
               setType(e.target.value as TxType | '');
             }}
           >
-            <option value="">{STRINGS.common.all} turlar</option>
-            <option value="INCOME">{STRINGS.common.income}</option>
-            <option value="EXPENSE">{STRINGS.common.expense}</option>
+            <option value="">{t('transactions.allTypes')}</option>
+            <option value="INCOME">{t('common.income')}</option>
+            <option value="EXPENSE">{t('common.expense')}</option>
           </Select>
           <Select
             value={categoryId}
@@ -134,7 +133,7 @@ export default function TransactionsPage() {
               setCategoryId(e.target.value);
             }}
           >
-            <option value="">{STRINGS.common.all} kategoriyalar</option>
+            <option value="">{t('transactions.allCategories')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.icon ? `${c.icon} ` : ''}
@@ -164,7 +163,7 @@ export default function TransactionsPage() {
             onClick={resetFilters}
             className="mt-3 text-[12px] text-accent hover:underline"
           >
-            Filtrlarni tozalash
+            {t('transactions.resetFilters')}
           </button>
         )}
       </Card>
@@ -172,7 +171,7 @@ export default function TransactionsPage() {
       <Card>
         <div className="flex items-center justify-between mb-3">
           <p className="text-[12.5px] text-muted">
-            {data?.total ?? 0} ta tranzaksiya
+            {data?.total ?? 0} {t('transactions.count')}
           </p>
           {refreshing && <Spinner className="text-accent" />}
         </div>
@@ -185,7 +184,7 @@ export default function TransactionsPage() {
         {data && data.totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between">
             <p className="text-[11.5px] text-muted">
-              {data.page} / {data.totalPages} sahifa
+              {data.page} / {data.totalPages} {t('transactions.page')}
             </p>
             <div className="flex gap-2">
               <Button

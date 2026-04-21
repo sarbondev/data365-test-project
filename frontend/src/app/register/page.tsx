@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { useTranslation, useLocale } from '@/contexts/i18n-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PhoneInput from '@/components/ui/phone-input';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import type { RegisterStartResponse } from '@/lib/types';
 
 type Step = 'form' | 'verify';
@@ -15,6 +17,8 @@ type Step = 'form' | 'verify';
 export default function RegisterPage() {
   const router = useRouter();
   const { setUser } = useAuth();
+  const { t } = useTranslation();
+  const locale = useLocale();
   const [step, setStep] = useState<Step>('form');
 
   // Step 1
@@ -34,19 +38,19 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     if (name.trim().length < 2) {
-      setError("Ism kamida 2 belgidan iborat bo'lishi kerak");
+      setError(t('auth.errors.nameShort'));
       return;
     }
     if (!/^\+998\d{9}$/.test(phone)) {
-      setError("Telefon raqami noto'g'ri");
+      setError(t('auth.errors.phoneInvalid'));
       return;
     }
     if (password.length < 6) {
-      setError("Parol kamida 6 belgidan iborat bo'lishi kerak");
+      setError(t('auth.errors.passwordShort'));
       return;
     }
     if (password !== confirm) {
-      setError("Parollar mos kelmadi");
+      setError(t('auth.errors.passwordMismatch'));
       return;
     }
     setLoading(true);
@@ -55,12 +59,13 @@ export default function RegisterPage() {
         name: name.trim(),
         phone,
         password,
+        locale,
       });
       setPending(res);
       setStep('verify');
     } catch (e) {
       setError(
-        e instanceof ApiError ? e.message : "Ro'yxatdan o'tishda xatolik",
+        e instanceof ApiError ? e.message : t('auth.errors.registerGeneric'),
       );
     } finally {
       setLoading(false);
@@ -72,7 +77,7 @@ export default function RegisterPage() {
     if (!pending) return;
     setError(null);
     if (!/^\d{6}$/.test(code)) {
-      setError('Kod 6 ta raqamdan iborat bo‘lishi kerak');
+      setError(t('auth.errors.codeLength'));
       return;
     }
     setLoading(true);
@@ -83,7 +88,7 @@ export default function RegisterPage() {
       router.refresh();
     } catch (e) {
       setError(
-        e instanceof ApiError ? e.message : 'Tasdiqlashda xatolik',
+        e instanceof ApiError ? e.message : t('auth.errors.verifyGeneric'),
       );
     } finally {
       setLoading(false);
@@ -95,9 +100,14 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm bg-surface rounded-lg border border-border p-8">
         {step === 'form' ? (
           <>
-            <h1 className="text-xl font-semibold mb-1">Ro'yxatdan o'tish</h1>
+            <div className="flex items-start justify-between mb-1 gap-3">
+              <h1 className="text-xl font-semibold">
+                {t('auth.registerTitle')}
+              </h1>
+              <LanguageSwitcher variant="pill" />
+            </div>
             <p className="text-sm text-muted mb-6">
-              Ma'lumotlaringizni kiriting
+              {t('auth.registerSubtitle')}
             </p>
             <form onSubmit={submitForm} className="space-y-4">
               <div>
@@ -105,7 +115,7 @@ export default function RegisterPage() {
                   htmlFor="name"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Ism
+                  {t('auth.name')}
                 </label>
                 <Input
                   id="name"
@@ -116,7 +126,7 @@ export default function RegisterPage() {
               </div>
 
               <PhoneInput
-                label="Telefon raqam"
+                label={t('auth.phone')}
                 value={phone}
                 onChange={setPhone}
                 id="phone"
@@ -127,7 +137,7 @@ export default function RegisterPage() {
                   htmlFor="password"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Parol
+                  {t('auth.password')}
                 </label>
                 <Input
                   id="password"
@@ -143,7 +153,7 @@ export default function RegisterPage() {
                   htmlFor="confirm"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Parolni takrorlang
+                  {t('auth.passwordConfirm')}
                 </label>
                 <Input
                   id="confirm"
@@ -161,27 +171,26 @@ export default function RegisterPage() {
               )}
 
               <Button type="submit" loading={loading} className="w-full">
-                Davom etish
+                {t('common.continue')}
               </Button>
             </form>
 
             <p className="text-sm text-muted text-center mt-6">
-              Hisobingiz bormi?{' '}
+              {t('auth.hasAccount')}{' '}
               <Link
                 href="/login"
                 className="text-accent font-medium hover:underline"
               >
-                Kirish
+                {t('auth.login')}
               </Link>
             </p>
           </>
         ) : (
           <>
-            <h1 className="text-xl font-semibold mb-1">Telegram tasdiqi</h1>
-            <p className="text-sm text-muted mb-4">
-              Quyidagi tugma orqali Telegram botni oching — bot sizga 6 xonali
-              kod yuboradi. Kodni quyida kiriting.
-            </p>
+            <h1 className="text-xl font-semibold mb-1">
+              {t('auth.verifyTitle')}
+            </h1>
+            <p className="text-sm text-muted mb-4">{t('auth.verifySubtitle')}</p>
 
             <a
               href={pending?.telegramDeepLink}
@@ -189,7 +198,7 @@ export default function RegisterPage() {
               rel="noopener noreferrer"
               className="block w-full text-center bg-accent text-white rounded py-2 text-sm font-medium hover:bg-accent/90 mb-5"
             >
-              Telegram botni ochish
+              {t('auth.openBot')}
             </a>
 
             <form onSubmit={submitVerify} className="space-y-4">
@@ -198,7 +207,7 @@ export default function RegisterPage() {
                   htmlFor="code"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Tasdiqlash kodi
+                  {t('auth.verifyCode')}
                 </label>
                 <Input
                   id="code"
@@ -220,7 +229,7 @@ export default function RegisterPage() {
               )}
 
               <Button type="submit" loading={loading} className="w-full">
-                Tasdiqlash
+                {t('auth.verifyBtn')}
               </Button>
 
               <button
@@ -232,7 +241,7 @@ export default function RegisterPage() {
                 }}
                 className="block w-full text-center text-sm text-muted hover:text-foreground"
               >
-                ← Orqaga
+                {t('common.back')}
               </button>
             </form>
           </>

@@ -10,7 +10,7 @@ import { FullPageSpinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { formatUZS } from '@/lib/utils';
-import { STRINGS } from '@/constants/strings';
+import { useTranslation } from '@/contexts/i18n-context';
 import type { Category, TxType } from '@/lib/types';
 
 const COLORS = [
@@ -30,6 +30,7 @@ const ICONS = ['💼', '🛠️', '📈', '📦', '🏢', '🚚', '👥', '📣'
 
 export default function CategoriesPage() {
   const toast = useToast();
+  const { t } = useTranslation();
   const [cats, setCats] = React.useState<Category[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
@@ -48,7 +49,7 @@ export default function CategoriesPage() {
     if (!deleteId) return;
     try {
       await api.categories.delete(deleteId);
-      toast.success(STRINGS.toasts.deleted);
+      toast.success(t('toasts.deleted'));
       load();
     } catch (e) {
       toast.error((e as Error).message);
@@ -65,19 +66,19 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-[22px] font-medium">{STRINGS.categories.title}</h1>
+        <h1 className="text-[22px] font-medium">{t('categories.title')}</h1>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <CategoryColumn
-          title={STRINGS.categories.incomeCol}
+          title={t('categories.incomeCol')}
           type="INCOME"
           cats={income}
           onChanged={load}
           onDelete={(id) => setDeleteId(id)}
         />
         <CategoryColumn
-          title={STRINGS.categories.expenseCol}
+          title={t('categories.expenseCol')}
           type="EXPENSE"
           cats={expense}
           onChanged={load}
@@ -87,8 +88,8 @@ export default function CategoriesPage() {
 
       <ConfirmDialog
         open={!!deleteId}
-        title="Kategoriyani o'chirishni tasdiqlaysizmi?"
-        confirmText={STRINGS.common.delete}
+        title={t('categories.deleteConfirm')}
+        confirmText={t('common.delete')}
         destructive
         onCancel={() => setDeleteId(null)}
         onConfirm={handleDelete}
@@ -111,6 +112,7 @@ function CategoryColumn({
   onDelete: (id: string) => void;
 }) {
   const toast = useToast();
+  const { t } = useTranslation();
   const [adding, setAdding] = React.useState(false);
   const [name, setName] = React.useState('');
   const [color, setColor] = React.useState(COLORS[0]);
@@ -137,7 +139,7 @@ function CategoryColumn({
         icon,
         budget: budget ? Number(budget.replace(/\s|,/g, '')) : undefined,
       });
-      toast.success(STRINGS.toasts.saved);
+      toast.success(t('toasts.saved'));
       reset();
       setAdding(false);
       onChanged();
@@ -154,7 +156,7 @@ function CategoryColumn({
         <h3 className="text-[14px] font-medium">{title}</h3>
         <Button size="sm" variant="outline" onClick={() => setAdding((v) => !v)}>
           <Plus className="h-3.5 w-3.5" />
-          {STRINGS.common.add}
+          {t('common.add')}
         </Button>
       </div>
 
@@ -164,14 +166,16 @@ function CategoryColumn({
           className="mb-4 space-y-3 rounded border border-border bg-surfaceAlt/60 p-3"
         >
           <Input
-            placeholder="Kategoriya nomi"
+            placeholder={t('categories.namePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
             maxLength={50}
           />
           <div>
-            <p className="text-[11.5px] text-muted mb-1.5">Rang</p>
+            <p className="text-[11.5px] text-muted mb-1.5">
+              {t('categories.colorLabel')}
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {COLORS.map((c) => (
                 <button
@@ -188,7 +192,9 @@ function CategoryColumn({
             </div>
           </div>
           <div>
-            <p className="text-[11.5px] text-muted mb-1.5">Belgi</p>
+            <p className="text-[11.5px] text-muted mb-1.5">
+              {t('categories.iconLabel')}
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {ICONS.map((e) => (
                 <button
@@ -209,13 +215,13 @@ function CategoryColumn({
           </div>
           <Input
             inputMode="decimal"
-            placeholder="Oylik byudjet (ixtiyoriy, so'm)"
+            placeholder={t('categories.budgetPlaceholder')}
             value={budget}
             onChange={(e) => setBudget(e.target.value)}
           />
           <div className="flex gap-2">
             <Button type="submit" loading={submitting} size="sm">
-              {STRINGS.common.save}
+              {t('common.save')}
             </Button>
             <Button
               type="button"
@@ -226,7 +232,7 @@ function CategoryColumn({
                 setAdding(false);
               }}
             >
-              {STRINGS.common.cancel}
+              {t('common.cancel')}
             </Button>
           </div>
         </form>
@@ -234,7 +240,7 @@ function CategoryColumn({
 
       <div className="space-y-1.5">
         {cats.length === 0 && (
-          <p className="text-[13px] text-muted">Kategoriyalar yo'q</p>
+          <p className="text-[13px] text-muted">{t('categories.empty')}</p>
         )}
         {cats.map((c) => (
           <CategoryRow
@@ -259,6 +265,7 @@ function CategoryRow({
   onDelete: () => void;
 }) {
   const toast = useToast();
+  const { t } = useTranslation();
   const [editing, setEditing] = React.useState(false);
   const [name, setName] = React.useState(cat.name);
   const [color, setColor] = React.useState(cat.color);
@@ -268,6 +275,7 @@ function CategoryRow({
   const [busy, setBusy] = React.useState(false);
 
   const blocked = (cat.transactionCount ?? 0) > 0;
+  const currencyLabel = t('common.currency');
 
   const save = async () => {
     setBusy(true);
@@ -277,7 +285,7 @@ function CategoryRow({
         color,
         budget: budget ? Number(budget.replace(/\s|,/g, '')) : null,
       });
-      toast.success(STRINGS.toasts.updated);
+      toast.success(t('toasts.updated'));
       setEditing(false);
       onChanged();
     } catch (e) {
@@ -307,18 +315,18 @@ function CategoryRow({
         </div>
         <Input
           inputMode="decimal"
-          placeholder="Oylik byudjet (so'm)"
+          placeholder={t('categories.budgetEditPlaceholder')}
           value={budget}
           onChange={(e) => setBudget(e.target.value)}
         />
         <div className="flex gap-2">
           <Button size="sm" onClick={save} loading={busy}>
             <Check className="h-3.5 w-3.5" />
-            {STRINGS.common.save}
+            {t('common.save')}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
             <X className="h-3.5 w-3.5" />
-            {STRINGS.common.cancel}
+            {t('common.cancel')}
           </Button>
         </div>
       </div>
@@ -342,14 +350,15 @@ function CategoryRow({
             )}
           </div>
           <div className="text-[11.5px] text-muted truncate mt-0.5">
-            {cat.transactionCount ?? 0} {STRINGS.categories.txCount} ·{' '}
-            {STRINGS.categories.monthTotal}: {formatUZS(cat.monthlyTotal ?? 0)}{' '}
-            so'm
+            {cat.transactionCount ?? 0} {t('categories.txCount')} ·{' '}
+            {t('categories.monthTotal')}: {formatUZS(cat.monthlyTotal ?? 0)}{' '}
+            {currencyLabel}
             {cat.budget ? (
               <>
                 {' · '}
                 <span>
-                  {STRINGS.categories.budgetLabel}: {formatUZS(cat.budget)} so'm
+                  {t('categories.budgetLabel')}: {formatUZS(cat.budget)}{' '}
+                  {currencyLabel}
                 </span>
               </>
             ) : null}
@@ -373,10 +382,10 @@ function CategoryRow({
           aria-label="delete"
           title={
             cat.isDefault
-              ? STRINGS.categories.defaultBadge
+              ? t('categories.defaultBadge')
               : blocked
-                ? `${cat.transactionCount} ${STRINGS.categories.blocked}`
-                : STRINGS.common.delete
+                ? `${cat.transactionCount} ${t('categories.blocked')}`
+                : t('common.delete')
           }
         >
           <Trash2 className="h-4 w-4 text-muted" />

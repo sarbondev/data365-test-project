@@ -1,4 +1,5 @@
-import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Locale } from '@prisma/client';
 
 export class RegisterDto {
   @IsString()
@@ -16,4 +17,8 @@ export class RegisterDto {
   @MinLength(6)
   @MaxLength(72)
   password!: string;
+
+  @IsOptional()
+  @IsIn(['uz', 'ru'])
+  locale?: Locale;
 }

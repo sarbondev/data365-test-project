@@ -6,7 +6,11 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';
+import { Locale } from '@prisma/client';
+import { DEFAULT_LOCALE, normalizeLocale, t } from './i18n';
+import { LocalizedException } from './localized.exception';
+import { AuthenticatedUser } from '../auth/auth.types';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -15,6 +19,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+    const locale = this.resolveLocale(request);
 
     const status =
       exception instanceof HttpException
@@ -23,7 +29,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     let message = 'Internal server error';
 
-    if (exception instanceof HttpException) {
+    if (exception instanceof LocalizedException) {
+      message = t(exception.messageKey as never, locale);
+    } else if (exception instanceof HttpException) {
       const res = exception.getResponse();
       message =
         typeof res === 'string'
@@ -40,5 +48,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message,
       success: false,
     });
+  }
+
+  private resolveLocale(req: Request): Locale {
+    const authed = (req as Request & { user?: AuthenticatedUser }).user;
+    if (authed?.locale) return authed.locale;
+    const cookieLocale = (req.cookies as Record<string, string> | undefined)?.[
+      'locale'
+    ];
+    if (cookieLocale) return normalizeLocale(cookieLocale);
+    const header = req.headers['accept-language'];
+    if (typeof header === 'string') return normalizeLocale(header);
+    return DEFAULT_LOCALE;
   }
 }

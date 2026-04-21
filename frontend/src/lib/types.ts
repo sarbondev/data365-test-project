@@ -109,11 +109,14 @@ export interface BudgetResponse {
   items: BudgetItem[];
 }
 
+export type Locale = 'uz' | 'ru';
+
 export interface AuthUser {
   id: string;
   name: string;
   phone: string;
   telegramChatId: string | null;
+  locale: Locale;
 }
 
 export interface RegisterStartResponse {

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { ArrowDownRight, ArrowUpRight, Wallet } from 'lucide-react';
 import { api } from '@/lib/api';
 import { isoDate } from '@/lib/utils';
-import { STRINGS } from '@/constants/strings';
+import { useTranslation } from '@/contexts/i18n-context';
 import { StatCard } from '@/components/stat-card';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -24,6 +24,7 @@ import type {
 } from '@/lib/types';
 
 export default function OverviewPage() {
+  const { t, locale } = useTranslation();
   const [overview, setOverview] = React.useState<OverviewResponse | null>(null);
   const [trend, setTrend] = React.useState<TrendResponse | null>(null);
   const [byCat, setByCat] = React.useState<ByCategoryResponse | null>(null);
@@ -69,12 +70,12 @@ export default function OverviewPage() {
     return (
       <div className="space-y-6">
         <header>
-          <h1 className="text-[22px] font-medium">{STRINGS.nav.overview}</h1>
+          <h1 className="text-[22px] font-medium">{t('nav.overview')}</h1>
         </header>
         <Card>
           <EmptyState
-            title={STRINGS.overview.emptyTitle}
-            subtitle={STRINGS.overview.emptySubtitle}
+            title={t('overview.emptyTitle')}
+            subtitle={t('overview.emptySubtitle')}
           />
         </Card>
         <QuickAddForm categories={categories} onCreated={load} />
@@ -86,13 +87,15 @@ export default function OverviewPage() {
     .slice(0, 6)
     .map((i) => ({ name: i.name, value: i.total, color: i.color }));
 
+  const dateLocale = locale === 'ru' ? 'ru-RU' : 'en-GB';
+
   return (
     <div className="space-y-6">
       <header className="flex items-end justify-between">
         <div>
-          <h1 className="text-[22px] font-medium">{STRINGS.nav.overview}</h1>
+          <h1 className="text-[22px] font-medium">{t('nav.overview')}</h1>
           <p className="mt-0.5 text-[13px] text-muted">
-            {new Date().toLocaleDateString('en-GB', {
+            {new Date().toLocaleDateString(dateLocale, {
               day: 'numeric',
               month: 'long',
               year: 'numeric',
@@ -103,14 +106,14 @@ export default function OverviewPage() {
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
-          label={STRINGS.overview.income}
+          label={t('overview.income')}
           amount={overview?.income.total ?? 0}
           change={overview?.income.change ?? 0}
           tone="success"
           icon={<ArrowUpRight className="h-4 w-4 text-success" />}
         />
         <StatCard
-          label={STRINGS.overview.expense}
+          label={t('overview.expense')}
           amount={overview?.expense.total ?? 0}
           change={overview?.expense.change ?? 0}
           tone="danger"
@@ -118,7 +121,7 @@ export default function OverviewPage() {
           icon={<ArrowDownRight className="h-4 w-4 text-danger" />}
         />
         <StatCard
-          label={STRINGS.overview.net}
+          label={t('overview.net')}
           amount={overview?.net.total ?? 0}
           change={overview?.net.change ?? 0}
           tone={(overview?.net.total ?? 0) >= 0 ? 'success' : 'danger'}
@@ -129,14 +132,16 @@ export default function OverviewPage() {
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>{STRINGS.overview.incomeVsExpense}</CardTitle>
-            <span className="text-[11.5px] text-muted">30 kun</span>
+            <CardTitle>{t('overview.incomeVsExpense')}</CardTitle>
+            <span className="text-[11.5px] text-muted">
+              {t('overview.days30')}
+            </span>
           </CardHeader>
           <IncomeExpenseAreaChart data={trend?.points ?? []} />
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>{STRINGS.overview.topCategories}</CardTitle>
+            <CardTitle>{t('overview.topCategories')}</CardTitle>
           </CardHeader>
           <CategoryDonut data={donutData} />
         </Card>
@@ -146,7 +151,7 @@ export default function OverviewPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{STRINGS.overview.recent}</CardTitle>
+          <CardTitle>{t('overview.recent')}</CardTitle>
         </CardHeader>
         <TransactionsTable
           rows={recent?.items ?? []}

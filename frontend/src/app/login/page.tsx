@@ -5,14 +5,17 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { useTranslation } from '@/contexts/i18n-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PhoneInput from '@/components/ui/phone-input';
+import { LanguageSwitcher } from '@/components/language-switcher';
 
 export default function LoginPage() {
   const router = useRouter();
   const params = useSearchParams();
   const { setUser } = useAuth();
+  const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,11 +25,11 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\+998\d{9}$/.test(phone)) {
-      setError("Telefon raqami noto'g'ri");
+      setError(t('auth.errors.phoneInvalid'));
       return;
     }
     if (password.length < 6) {
-      setError("Parol kamida 6 belgidan iborat bo'lishi kerak");
+      setError(t('auth.errors.passwordShort'));
       return;
     }
     setLoading(true);
@@ -38,7 +41,7 @@ export default function LoginPage() {
       router.refresh();
     } catch (e) {
       setError(
-        e instanceof ApiError ? e.message : 'Tizimga kirishda xatolik',
+        e instanceof ApiError ? e.message : t('auth.errors.loginGeneric'),
       );
     } finally {
       setLoading(false);
@@ -48,14 +51,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-surfaceAlt">
       <div className="w-full max-w-sm bg-surface rounded-lg border border-border p-8">
-        <h1 className="text-xl font-semibold mb-1">Tizimga kirish</h1>
-        <p className="text-sm text-muted mb-6">
-          Telefon raqamingiz va parolingizni kiriting
-        </p>
+        <div className="flex items-start justify-between mb-1 gap-3">
+          <h1 className="text-xl font-semibold">{t('auth.loginTitle')}</h1>
+          <LanguageSwitcher variant="pill" />
+        </div>
+        <p className="text-sm text-muted mb-6">{t('auth.loginSubtitle')}</p>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <PhoneInput
-            label="Telefon raqam"
+            label={t('auth.phone')}
             value={phone}
             onChange={setPhone}
             id="phone"
@@ -66,7 +70,7 @@ export default function LoginPage() {
               htmlFor="password"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Parol
+              {t('auth.password')}
             </label>
             <Input
               id="password"
@@ -84,17 +88,17 @@ export default function LoginPage() {
           )}
 
           <Button type="submit" loading={loading} className="w-full">
-            Kirish
+            {t('auth.login')}
           </Button>
         </form>
 
         <p className="text-sm text-muted text-center mt-6">
-          Hisobingiz yo'qmi?{' '}
+          {t('auth.noAccount')}{' '}
           <Link
             href="/register"
             className="text-accent font-medium hover:underline"
           >
-            Ro'yxatdan o'ting
+            {t('auth.register')}
           </Link>
         </p>
       </div>

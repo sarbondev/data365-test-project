@@ -4,6 +4,7 @@ import type {
   BudgetResponse,
   ByCategoryResponse,
   Category,
+  Locale,
   OverviewResponse,
   PaginatedTransactions,
   Period,
@@ -106,6 +107,7 @@ export interface RegisterInput {
   name: string;
   phone: string;
   password: string;
+  locale?: Locale;
 }
 
 export interface VerifyOtpInput {
@@ -137,6 +139,11 @@ export const api = {
       }),
     logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
     me: () => request<AuthUser>('/auth/me'),
+    updateLocale: (locale: Locale) =>
+      request<AuthUser>('/auth/locale', {
+        method: 'PATCH',
+        body: JSON.stringify({ locale }),
+      }),
   },
   transactions: {
     list: (filters: TransactionFilters = {}) =>

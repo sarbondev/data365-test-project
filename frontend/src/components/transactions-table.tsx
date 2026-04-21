@@ -9,9 +9,9 @@ import { Select } from './ui/select';
 import { ConfirmDialog } from './ui/dialog';
 import { useToast } from './ui/toast';
 import { formatDate, formatUZS, isoDate } from '@/lib/utils';
-import { STRINGS, SOURCE_LABEL } from '@/constants/strings';
+import { useTranslation } from '@/contexts/i18n-context';
 import { api } from '@/lib/api';
-import type { Category, Transaction } from '@/lib/types';
+import type { Category, Source, Transaction } from '@/lib/types';
 
 interface Props {
   rows: Transaction[];
@@ -21,6 +21,11 @@ interface Props {
   showSource?: boolean;
 }
 
+const SOURCE_LABEL: Record<Source, string> = {
+  DASHBOARD: 'Dashboard',
+  TELEGRAM: 'Telegram',
+};
+
 export function TransactionsTable({
   rows,
   categories,
@@ -29,6 +34,7 @@ export function TransactionsTable({
   showSource = true,
 }: Props) {
   const toast = useToast();
+  const { t } = useTranslation();
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<Partial<Transaction>>({});
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
@@ -39,10 +45,10 @@ export function TransactionsTable({
     setBusyId(deleteId);
     try {
       await api.transactions.delete(deleteId);
-      toast.success(STRINGS.toasts.deleted);
+      toast.success(t('toasts.deleted'));
       onChanged?.();
     } catch (e) {
-      toast.error((e as Error).message || STRINGS.toasts.error);
+      toast.error((e as Error).message || t('toasts.error'));
     } finally {
       setBusyId(null);
       setDeleteId(null);
@@ -75,12 +81,12 @@ export function TransactionsTable({
         date: draft.date ? new Date(draft.date).toISOString() : undefined,
         type: draft.type,
       });
-      toast.success(STRINGS.toasts.updated);
+      toast.success(t('toasts.updated'));
       setEditingId(null);
       setDraft({});
       onChanged?.();
     } catch (e) {
-      toast.error((e as Error).message || STRINGS.toasts.error);
+      toast.error((e as Error).message || t('toasts.error'));
     } finally {
       setBusyId(null);
     }
@@ -89,7 +95,7 @@ export function TransactionsTable({
   if (rows.length === 0) {
     return (
       <div className="py-10 text-center text-[13px] text-muted">
-        {STRINGS.transactions.empty}
+        {t('transactions.empty')}
       </div>
     );
   }
@@ -100,13 +106,13 @@ export function TransactionsTable({
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wide text-muted border-b border-borderSoft">
-              <th className="px-5 py-2.5 font-medium">{STRINGS.common.date}</th>
-              <th className="px-3 py-2.5 font-medium">{STRINGS.common.type}</th>
-              <th className="px-3 py-2.5 font-medium">{STRINGS.common.category}</th>
-              <th className="px-3 py-2.5 font-medium text-right">{STRINGS.common.amount}</th>
-              <th className="px-3 py-2.5 font-medium">{STRINGS.common.note}</th>
-              {showSource && <th className="px-3 py-2.5 font-medium">{STRINGS.common.source}</th>}
-              <th className="px-5 py-2.5 font-medium text-right">{STRINGS.common.actions}</th>
+              <th className="px-5 py-2.5 font-medium">{t('common.date')}</th>
+              <th className="px-3 py-2.5 font-medium">{t('common.type')}</th>
+              <th className="px-3 py-2.5 font-medium">{t('common.category')}</th>
+              <th className="px-3 py-2.5 font-medium text-right">{t('common.amount')}</th>
+              <th className="px-3 py-2.5 font-medium">{t('common.note')}</th>
+              {showSource && <th className="px-3 py-2.5 font-medium">{t('common.source')}</th>}
+              <th className="px-5 py-2.5 font-medium text-right">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -144,8 +150,8 @@ export function TransactionsTable({
                   <td className="px-3 py-3">
                     <Badge variant={tx.type === 'INCOME' ? 'income' : 'expense'}>
                       {tx.type === 'INCOME'
-                        ? STRINGS.common.income
-                        : STRINGS.common.expense}
+                        ? t('common.income')
+                        : t('common.expense')}
                     </Badge>
                   </td>
                   <td className="px-3 py-3">
@@ -274,8 +280,8 @@ export function TransactionsTable({
 
       <ConfirmDialog
         open={!!deleteId}
-        title={STRINGS.transactions.deleteConfirm}
-        confirmText={STRINGS.common.delete}
+        title={t('transactions.deleteConfirm')}
+        confirmText={t('common.delete')}
         destructive
         onCancel={() => setDeleteId(null)}
         onConfirm={handleDelete}

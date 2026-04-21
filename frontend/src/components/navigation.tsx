@@ -7,17 +7,15 @@ import {
   Receipt,
   BarChart3,
   Tags,
-  LogOut,
 } from 'lucide-react';
-import { STRINGS } from '@/constants/strings';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/auth-context';
+import { useTranslation } from '@/contexts/i18n-context';
 
 const NAV_ITEMS = [
-  { href: '/', label: STRINGS.nav.overview, icon: LayoutDashboard },
-  { href: '/transactions', label: STRINGS.nav.transactions, icon: Receipt },
-  { href: '/analytics', label: STRINGS.nav.analytics, icon: BarChart3 },
-  { href: '/categories', label: STRINGS.nav.categories, icon: Tags },
+  { href: '/', key: 'nav.overview' as const, icon: LayoutDashboard },
+  { href: '/transactions', key: 'nav.transactions' as const, icon: Receipt },
+  { href: '/analytics', key: 'nav.analytics' as const, icon: BarChart3 },
+  { href: '/categories', key: 'nav.categories' as const, icon: Tags },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -26,25 +24,9 @@ function isActive(pathname: string, href: string) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { t } = useTranslation();
   return (
-    <aside className="hidden lg:flex flex-col w-[240px] shrink-0 h-screen sticky top-0 border-r border-border bg-surface">
-      <div className="px-6 pt-7 pb-6 border-b border-borderSoft">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded bg-accent grid place-items-center text-white font-medium text-[14px]">
-            K
-          </div>
-          <div>
-            <div className="text-[15px] font-medium leading-tight">
-              {STRINGS.app.name}
-            </div>
-            <div className="text-[11.5px] text-muted leading-tight mt-0.5">
-              {STRINGS.app.tagline}
-            </div>
-          </div>
-        </Link>
-      </div>
-
+    <aside className="hidden lg:flex flex-col w-[220px] shrink-0 h-[calc(100vh-3.5rem)] sticky top-14 border-r border-border bg-surface">
       <nav className="flex-1 px-3 py-4">
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
@@ -62,29 +44,13 @@ export function Sidebar() {
                   )}
                 >
                   <Icon className="h-[18px] w-[18px]" />
-                  <span>{item.label}</span>
+                  <span>{t(item.key)}</span>
                 </Link>
               </li>
             );
           })}
         </ul>
       </nav>
-
-      {user && (
-        <div className="px-3 py-3 border-t border-borderSoft">
-          <div className="px-3 pb-2">
-            <div className="text-[13px] font-medium truncate">{user.name}</div>
-            <div className="text-[11.5px] text-muted truncate">{user.phone}</div>
-          </div>
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded text-[13px] text-foreground/80 hover:bg-surfaceAlt"
-          >
-            <LogOut className="h-[16px] w-[16px]" />
-            <span>Chiqish</span>
-          </button>
-        </div>
-      )}
 
       <div className="px-6 py-3 border-t border-borderSoft">
         <p className="text-[11px] text-muted">
@@ -97,6 +63,7 @@ export function Sidebar() {
 
 export function MobileNav() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-surface">
       <ul className="grid grid-cols-4">
@@ -113,7 +80,7 @@ export function MobileNav() {
                 )}
               >
                 <Icon className="h-[20px] w-[20px]" />
-                <span>{item.label}</span>
+                <span>{t(item.key)}</span>
               </Link>
             </li>
           );

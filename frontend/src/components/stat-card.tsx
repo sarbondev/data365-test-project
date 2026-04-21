@@ -1,6 +1,9 @@
+'use client';
+
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import { Card } from './ui/card';
 import { formatPercent, formatUZS } from '@/lib/utils';
+import { useTranslation } from '@/contexts/i18n-context';
 
 interface StatCardProps {
   label: string;
@@ -19,6 +22,7 @@ export function StatCard({
   invertChange,
   icon,
 }: StatCardProps) {
+  const { t } = useTranslation();
   const positive = invertChange ? change < 0 : change > 0;
   const negative = invertChange ? change > 0 : change < 0;
   const ChangeIcon =
@@ -45,14 +49,16 @@ export function StatCard({
       </div>
       <p className={`mt-3 text-[26px] font-medium tabular ${amountColor}`}>
         {formatUZS(amount)}
-        <span className="text-[13px] font-normal text-muted ml-1.5">so'm</span>
+        <span className="text-[13px] font-normal text-muted ml-1.5">
+          {t('common.currency')}
+        </span>
       </p>
       <div
         className={`mt-2 inline-flex items-center gap-1 text-[12px] ${changeColor}`}
       >
         <ChangeIcon className="h-3 w-3" />
         <span className="tabular">{formatPercent(change)}</span>
-        <span className="text-muted ml-1">vs oldingi davr</span>
+        <span className="text-muted ml-1">{t('common.vsPrevious')}</span>
       </div>
     </Card>
   );

@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { Sidebar, MobileNav } from '@/components/navigation';
+import { TopBar } from '@/components/top-bar';
 
 const PUBLIC_PREFIXES = ['/login', '/register'];
 
@@ -16,16 +17,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <>
-      <div className="flex min-h-screen">
+    <div className="min-h-screen flex flex-col">
+      <TopBar />
+      <div className="flex flex-1 min-h-0">
         <Sidebar />
         <main className="flex-1 min-w-0 pb-20 lg:pb-0">
-          <div className="px-6 py-8 page-fade">
-            {children}
-          </div>
+          <div className="px-6 py-8 page-fade">{children}</div>
         </main>
       </div>
       <MobileNav />
-    </>
+    </div>
   );
 }

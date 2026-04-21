@@ -1,11 +1,7 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { Type } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { LocalizedException } from '../common/localized.exception';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
@@ -47,7 +43,8 @@ export class CategoriesService {
       where: { id, userId },
       include: { _count: { select: { transactions: true } } },
     });
-    if (!cat) throw new NotFoundException('Category not found');
+    if (!cat)
+      throw new LocalizedException(HttpStatus.NOT_FOUND, 'categories.notFound');
     return cat;
   }
 
@@ -58,8 +55,9 @@ export class CategoriesService {
       },
     });
     if (existing) {
-      throw new ConflictException(
-        `Category "${dto.name}" already exists for ${dto.type}`,
+      throw new LocalizedException(
+        HttpStatus.CONFLICT,
+        'categories.alreadyExists',
       );
     }
     return this.prisma.category.create({ data: { ...dto, userId } });
@@ -74,8 +72,9 @@ export class CategoriesService {
         },
       });
       if (dup) {
-        throw new ConflictException(
-          `Category "${dto.name}" already exists for ${cat.type}`,
+        throw new LocalizedException(
+          HttpStatus.CONFLICT,
+          'categories.alreadyExists',
         );
       }
     }
@@ -88,13 +87,15 @@ export class CategoriesService {
   async delete(userId: string, id: string) {
     const cat = await this.findById(userId, id);
     if (cat.isDefault) {
-      throw new BadRequestException(
-        'Default categories cannot be deleted',
+      throw new LocalizedException(
+        HttpStatus.BAD_REQUEST,
+        'categories.cannotDeleteDefault',
       );
     }
     if (cat._count.transactions > 0) {
-      throw new BadRequestException(
-        `Cannot delete category with ${cat._count.transactions} transaction(s)`,
+      throw new LocalizedException(
+        HttpStatus.BAD_REQUEST,
+        'categories.cannotDeleteWithTx',
       );
     }
     await this.prisma.category.delete({ where: { id } });

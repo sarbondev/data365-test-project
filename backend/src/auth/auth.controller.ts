@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Post,
   Res,
   UseGuards,
@@ -14,6 +15,7 @@ import { CurrentUser } from './current-user.decorator';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { UpdateLocaleDto } from './dto/update-locale.dto';
 import { AuthenticatedUser } from './auth.types';
 
 @Controller('auth')
@@ -50,5 +52,22 @@ export class AuthController {
   @UseGuards(AuthGuard)
   me(@CurrentUser() user: AuthenticatedUser) {
     return user;
+  }
+
+  @Patch('locale')
+  @UseGuards(AuthGuard)
+  @HttpCode(200)
+  async updateLocale(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateLocaleDto,
+  ): Promise<AuthenticatedUser> {
+    const updated = await this.auth.updateLocale(user.id, dto.locale);
+    return {
+      id: updated.id,
+      name: updated.name,
+      phone: updated.phone,
+      telegramChatId: updated.telegramChatId,
+      locale: updated.locale,
+    };
   }
 }

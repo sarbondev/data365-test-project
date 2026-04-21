@@ -19,6 +19,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { formatUZS } from '@/lib/utils';
+import { useTranslation } from '@/contexts/i18n-context';
 
 const tooltipStyle = {
   backgroundColor: '#FFFFFF',
@@ -50,6 +51,8 @@ export function IncomeExpenseAreaChart({
 }: {
   data: IncomeExpensePoint[];
 }) {
+  const { t } = useTranslation();
+  const currencyLabel = t('common.currency');
   return (
     <ResponsiveContainer width="100%" height={240}>
       <AreaChart data={data} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
@@ -73,13 +76,13 @@ export function IncomeExpenseAreaChart({
         <YAxis tickFormatter={fmtAxis} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={(v: number) => formatUZS(v) + " so'm"}
+          formatter={(v: number) => `${formatUZS(v)} ${currencyLabel}`}
         />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
         <Area
           type="monotone"
           dataKey="income"
-          name="Kirim"
+          name={t('charts.income')}
           stroke={INCOME}
           fill="url(#incomeFill)"
           strokeWidth={1.5}
@@ -87,7 +90,7 @@ export function IncomeExpenseAreaChart({
         <Area
           type="monotone"
           dataKey="expense"
-          name="Xarajat"
+          name={t('charts.expense')}
           stroke={EXPENSE}
           fill="url(#expenseFill)"
           strokeWidth={1.5}
@@ -104,10 +107,12 @@ interface DonutDatum {
 }
 
 export function CategoryDonut({ data }: { data: DonutDatum[] }) {
+  const { t } = useTranslation();
+  const currencyLabel = t('common.currency');
   if (data.length === 0) {
     return (
       <div className="h-[240px] grid place-items-center text-[13px] text-muted">
-        Ma'lumot yo'q
+        {t('common.noData')}
       </div>
     );
   }
@@ -130,7 +135,7 @@ export function CategoryDonut({ data }: { data: DonutDatum[] }) {
         </Pie>
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={(v: number) => formatUZS(v) + " so'm"}
+          formatter={(v: number) => `${formatUZS(v)} ${currencyLabel}`}
         />
         <Legend
           wrapperStyle={{ fontSize: 12 }}
@@ -148,10 +153,12 @@ interface BarDatum {
 }
 
 export function HorizontalBars({ data }: { data: BarDatum[] }) {
+  const { t } = useTranslation();
+  const currencyLabel = t('common.currency');
   if (data.length === 0) {
     return (
       <div className="h-[240px] grid place-items-center text-[13px] text-muted">
-        Ma'lumot yo'q
+        {t('common.noData')}
       </div>
     );
   }
@@ -179,7 +186,7 @@ export function HorizontalBars({ data }: { data: BarDatum[] }) {
         />
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={(v: number) => formatUZS(v) + " so'm"}
+          formatter={(v: number) => `${formatUZS(v)} ${currencyLabel}`}
           cursor={{ fill: '#F5F5F5' }}
         />
         <Bar dataKey="value" radius={[0, 3, 3, 0]} barSize={18}>
@@ -193,6 +200,8 @@ export function HorizontalBars({ data }: { data: BarDatum[] }) {
 }
 
 export function TrendLine({ data }: { data: IncomeExpensePoint[] }) {
+  const { t } = useTranslation();
+  const currencyLabel = t('common.currency');
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
@@ -206,13 +215,13 @@ export function TrendLine({ data }: { data: IncomeExpensePoint[] }) {
         <YAxis tickFormatter={fmtAxis} axisLine={false} tickLine={false} />
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={(v: number) => formatUZS(v) + " so'm"}
+          formatter={(v: number) => `${formatUZS(v)} ${currencyLabel}`}
         />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
         <Line
           type="monotone"
           dataKey="income"
-          name="Kirim"
+          name={t('charts.income')}
           stroke={INCOME}
           strokeWidth={1.5}
           dot={false}
@@ -220,7 +229,7 @@ export function TrendLine({ data }: { data: IncomeExpensePoint[] }) {
         <Line
           type="monotone"
           dataKey="expense"
-          name="Xarajat"
+          name={t('charts.expense')}
           stroke={EXPENSE}
           strokeWidth={1.5}
           dot={false}

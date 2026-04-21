@@ -8,7 +8,7 @@ import { Card } from './ui/card';
 import { useToast } from './ui/toast';
 import { api } from '@/lib/api';
 import { isoDate } from '@/lib/utils';
-import { STRINGS } from '@/constants/strings';
+import { useTranslation } from '@/contexts/i18n-context';
 import type { Category, TxType } from '@/lib/types';
 
 interface QuickAddFormProps {
@@ -22,6 +22,7 @@ export function QuickAddForm({
   onCreated,
 }: QuickAddFormProps) {
   const toast = useToast();
+  const { t } = useTranslation();
   const [type, setType] = React.useState<TxType>('EXPENSE');
   const [amount, setAmount] = React.useState('');
   const [categoryId, setCategoryId] = React.useState('');
@@ -50,11 +51,11 @@ export function QuickAddForm({
     e.preventDefault();
     const amt = Number(amount.replace(/\s|,/g, ''));
     if (!amt || amt <= 0) {
-      toast.error(STRINGS.toasts.error);
+      toast.error(t('toasts.error'));
       return;
     }
     if (!categoryId) {
-      toast.error('Kategoriya tanlanmagan');
+      toast.error(t('transactions.categoryRequired'));
       return;
     }
     setSubmitting(true);
@@ -66,11 +67,11 @@ export function QuickAddForm({
         note: note || undefined,
         date: new Date(date).toISOString(),
       });
-      toast.success(STRINGS.toasts.saved);
+      toast.success(t('toasts.saved'));
       reset();
       onCreated?.();
     } catch (e) {
-      toast.error((e as Error).message || STRINGS.toasts.error);
+      toast.error((e as Error).message || t('toasts.error'));
     } finally {
       setSubmitting(false);
     }
@@ -80,7 +81,7 @@ export function QuickAddForm({
     <Card>
       <form onSubmit={submit} className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-[14px] font-medium">{STRINGS.overview.quickAdd}</h3>
+          <h3 className="text-[14px] font-medium">{t('overview.quickAdd')}</h3>
           <div className="inline-flex border border-border rounded overflow-hidden">
             <button
               type="button"
@@ -92,7 +93,7 @@ export function QuickAddForm({
                   : 'bg-surface text-muted hover:bg-surfaceAlt')
               }
             >
-              {STRINGS.common.income}
+              {t('common.income')}
             </button>
             <button
               type="button"
@@ -104,7 +105,7 @@ export function QuickAddForm({
                   : 'bg-surface text-muted hover:bg-surfaceAlt')
               }
             >
-              {STRINGS.common.expense}
+              {t('common.expense')}
             </button>
           </div>
         </div>
@@ -112,7 +113,7 @@ export function QuickAddForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-[11.5px] text-muted mb-1.5">
-              {STRINGS.common.amount} (so'm)
+              {t('transactions.amountLabel')}
             </label>
             <Input
               inputMode="decimal"
@@ -124,7 +125,7 @@ export function QuickAddForm({
           </div>
           <div>
             <label className="block text-[11.5px] text-muted mb-1.5">
-              {STRINGS.common.category}
+              {t('common.category')}
             </label>
             <Select
               value={categoryId}
@@ -141,7 +142,7 @@ export function QuickAddForm({
           </div>
           <div>
             <label className="block text-[11.5px] text-muted mb-1.5">
-              {STRINGS.common.date}
+              {t('common.date')}
             </label>
             <Input
               type="date"
@@ -152,10 +153,10 @@ export function QuickAddForm({
           </div>
           <div>
             <label className="block text-[11.5px] text-muted mb-1.5">
-              {STRINGS.common.note}
+              {t('common.note')}
             </label>
             <Input
-              placeholder="Klient to'lovi"
+              placeholder={t('transactions.notePlaceholder')}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={500}
@@ -164,7 +165,7 @@ export function QuickAddForm({
         </div>
 
         <Button type="submit" loading={submitting}>
-          {STRINGS.common.add}
+          {t('common.add')}
         </Button>
       </form>
     </Card>

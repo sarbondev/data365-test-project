@@ -7,7 +7,7 @@ import { HorizontalBars, TrendLine } from '@/components/charts';
 import { FullPageSpinner } from '@/components/ui/spinner';
 import { api } from '@/lib/api';
 import { formatUZS, isoDate } from '@/lib/utils';
-import { STRINGS } from '@/constants/strings';
+import { useTranslation } from '@/contexts/i18n-context';
 import { cn } from '@/lib/utils';
 import type {
   BudgetResponse,
@@ -17,14 +17,10 @@ import type {
   TrendResponse,
 } from '@/lib/types';
 
-const PERIODS: { id: Period; label: string }[] = [
-  { id: 'week', label: STRINGS.periods.week },
-  { id: 'month', label: STRINGS.periods.month },
-  { id: 'last-month', label: STRINGS.periods['last-month'] },
-  { id: 'custom', label: STRINGS.periods.custom },
-];
+const PERIOD_IDS: Period[] = ['week', 'month', 'last-month', 'custom'];
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation();
   const [period, setPeriod] = React.useState<Period>('month');
   const [startDate, setStartDate] = React.useState(
     isoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
@@ -66,25 +62,27 @@ export default function AnalyticsPage() {
 
   if (loading || !overview) return <FullPageSpinner />;
 
+  const currencyLabel = t('common.currency');
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[22px] font-medium">{STRINGS.analytics.title}</h1>
+        <h1 className="text-[22px] font-medium">{t('analytics.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex border border-border rounded overflow-hidden">
-            {PERIODS.map((p, i) => (
+            {PERIOD_IDS.map((pid, i) => (
               <button
-                key={p.id}
-                onClick={() => setPeriod(p.id)}
+                key={pid}
+                onClick={() => setPeriod(pid)}
                 className={cn(
                   'px-3 h-8 text-[12px] transition-colors',
                   i > 0 && 'border-l border-border',
-                  period === p.id
+                  period === pid
                     ? 'bg-accent text-white'
                     : 'bg-surface text-muted hover:bg-surfaceAlt',
                 )}
               >
-                {p.label}
+                {t(`periods.${pid}` as const)}
               </button>
             ))}
           </div>
@@ -110,25 +108,25 @@ export default function AnalyticsPage() {
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <p className="text-[12px] text-muted font-medium">
-            {STRINGS.analytics.avgDaily}
+            {t('analytics.avgDaily')}
           </p>
           <p className="mt-3 text-[22px] font-medium tabular text-danger">
             {formatUZS(overview.stats?.avgDailyExpense ?? 0)}
             <span className="text-[13px] font-normal text-muted ml-1.5">
-              so'm
+              {currencyLabel}
             </span>
           </p>
         </Card>
         <Card>
           <p className="text-[12px] text-muted font-medium">
-            {STRINGS.analytics.biggestExpense}
+            {t('analytics.biggestExpense')}
           </p>
           {overview.stats?.biggestExpense ? (
             <>
               <p className="mt-3 text-[22px] font-medium tabular text-danger">
                 {formatUZS(overview.stats.biggestExpense.amount)}
                 <span className="text-[13px] font-normal text-muted ml-1.5">
-                  so'm
+                  {currencyLabel}
                 </span>
               </p>
               <p className="mt-1 text-[12px] text-muted">
@@ -141,7 +139,7 @@ export default function AnalyticsPage() {
         </Card>
         <Card>
           <p className="text-[12px] text-muted font-medium">
-            {STRINGS.analytics.mostActive}
+            {t('analytics.mostActive')}
           </p>
           {overview.stats?.mostActiveCategory ? (
             <>
@@ -149,7 +147,8 @@ export default function AnalyticsPage() {
                 {overview.stats.mostActiveCategory.name}
               </p>
               <p className="mt-1 text-[12px] text-muted">
-                {overview.stats.mostActiveCategory.count} ta tranzaksiya
+                {overview.stats.mostActiveCategory.count}{' '}
+                {t('transactions.count')}
               </p>
             </>
           ) : (
@@ -161,7 +160,7 @@ export default function AnalyticsPage() {
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>{STRINGS.analytics.incomeByCategory}</CardTitle>
+            <CardTitle>{t('analytics.incomeByCategory')}</CardTitle>
           </CardHeader>
           <HorizontalBars
             data={(income?.items ?? []).map((i) => ({
@@ -173,7 +172,7 @@ export default function AnalyticsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>{STRINGS.analytics.expenseByCategory}</CardTitle>
+            <CardTitle>{t('analytics.expenseByCategory')}</CardTitle>
           </CardHeader>
           <HorizontalBars
             data={(expense?.items ?? []).map((i) => ({
@@ -187,14 +186,14 @@ export default function AnalyticsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{STRINGS.analytics.dailyTrend}</CardTitle>
+          <CardTitle>{t('analytics.dailyTrend')}</CardTitle>
         </CardHeader>
         <TrendLine data={trend?.points ?? []} />
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>{STRINGS.analytics.budget}</CardTitle>
+          <CardTitle>{t('analytics.budget')}</CardTitle>
         </CardHeader>
         {budget && budget.items.length > 0 ? (
           <div className="space-y-4">
@@ -220,7 +219,8 @@ export default function AnalyticsPage() {
                       </span>
                     </div>
                     <span className="text-muted tabular">
-                      {formatUZS(b.spent)} / {formatUZS(b.budget)} so'm
+                      {formatUZS(b.spent)} / {formatUZS(b.budget)}{' '}
+                      {currencyLabel}
                     </span>
                   </div>
                   <div className="h-1.5 w-full bg-surfaceAlt rounded-full overflow-hidden">
@@ -230,18 +230,16 @@ export default function AnalyticsPage() {
                     />
                   </div>
                   <p className="mt-1 text-[11.5px] text-muted">
-                    {b.usage.toFixed(0)}% sarflandi · {formatUZS(b.remaining)} so'm
-                    qoldi
+                    {b.usage.toFixed(0)}% {t('analytics.spent')} ·{' '}
+                    {formatUZS(b.remaining)} {currencyLabel}{' '}
+                    {t('analytics.remaining')}
                   </p>
                 </div>
               );
             })}
           </div>
         ) : (
-          <p className="text-[13px] text-muted">
-            Hozircha byudjet o'rnatilmagan. Kategoriyalar sahifasida byudjet
-            qo'shing.
-          </p>
+          <p className="text-[13px] text-muted">{t('analytics.noBudget')}</p>
         )}
       </Card>
     </div>
