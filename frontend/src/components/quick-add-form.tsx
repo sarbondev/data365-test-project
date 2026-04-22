@@ -112,7 +112,7 @@ export function QuickAddForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11.5px] text-muted mb-1.5">
+            <label className="block text-[12px] font-semibold text-foreground mb-1.5">
               {t('transactions.amountLabel')}
             </label>
             <Input
@@ -124,7 +124,7 @@ export function QuickAddForm({
             />
           </div>
           <div>
-            <label className="block text-[11.5px] text-muted mb-1.5">
+            <label className="block text-[12px] font-semibold text-foreground mb-1.5">
               {t('common.category')}
             </label>
             <Select
@@ -141,7 +141,7 @@ export function QuickAddForm({
             </Select>
           </div>
           <div>
-            <label className="block text-[11.5px] text-muted mb-1.5">
+            <label className="block text-[12px] font-semibold text-foreground mb-1.5">
               {t('common.date')}
             </label>
             <Input
@@ -152,7 +152,7 @@ export function QuickAddForm({
             />
           </div>
           <div>
-            <label className="block text-[11.5px] text-muted mb-1.5">
+            <label className="block text-[12px] font-semibold text-foreground mb-1.5">
               {t('common.note')}
             </label>
             <Input

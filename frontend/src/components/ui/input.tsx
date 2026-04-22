@@ -4,7 +4,7 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 const base =
-  'w-full rounded border border-border bg-surface px-3 h-9 text-[13px] text-foreground placeholder:text-faint transition-colors focus:outline-none focus:border-accent';
+  'w-full rounded-lg border border-border bg-surface px-3 h-9 text-[13px] text-foreground placeholder:text-faint transition-colors duration-150 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15';
 
 export const Input = React.forwardRef<
   HTMLInputElement,

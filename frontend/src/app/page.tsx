@@ -70,7 +70,7 @@ export default function OverviewPage() {
     return (
       <div className="space-y-6">
         <header>
-          <h1 className="text-[22px] font-medium">{t('nav.overview')}</h1>
+          <h1 className="text-[22px] font-bold tracking-tight">{t('nav.overview')}</h1>
         </header>
         <Card>
           <EmptyState
@@ -93,7 +93,7 @@ export default function OverviewPage() {
     <div className="space-y-6">
       <header className="flex items-end justify-between">
         <div>
-          <h1 className="text-[22px] font-medium">{t('nav.overview')}</h1>
+          <h1 className="text-[22px] font-bold tracking-tight">{t('nav.overview')}</h1>
           <p className="mt-0.5 text-[13px] text-muted">
             {new Date().toLocaleDateString(dateLocale, {
               day: 'numeric',

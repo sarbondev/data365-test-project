@@ -98,7 +98,7 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-[22px] font-medium">{t('transactions.title')}</h1>
+        <h1 className="text-[22px] font-bold tracking-tight">{t('transactions.title')}</h1>
         <Button variant="outline" onClick={exportCsv}>
           <Download className="h-4 w-4" />
           {t('transactions.export')}

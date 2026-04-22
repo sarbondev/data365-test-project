@@ -67,15 +67,15 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[22px] font-medium">{t('analytics.title')}</h1>
+        <h1 className="text-[22px] font-bold tracking-tight">{t('analytics.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex border border-border rounded overflow-hidden">
+          <div className="inline-flex border border-border rounded-lg overflow-hidden">
             {PERIOD_IDS.map((pid, i) => (
               <button
                 key={pid}
                 onClick={() => setPeriod(pid)}
                 className={cn(
-                  'px-3 h-8 text-[12px] transition-colors',
+                  'px-3 h-8 text-[12px] font-medium transition-colors',
                   i > 0 && 'border-l border-border',
                   period === pid
                     ? 'bg-accent text-white'
@@ -107,7 +107,7 @@ export default function AnalyticsPage() {
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
-          <p className="text-[12px] text-muted font-medium">
+          <p className="text-[12px] font-semibold text-muted uppercase tracking-wider">
             {t('analytics.avgDaily')}
           </p>
           <p className="mt-3 text-[22px] font-medium tabular text-danger">
@@ -118,12 +118,12 @@ export default function AnalyticsPage() {
           </p>
         </Card>
         <Card>
-          <p className="text-[12px] text-muted font-medium">
+          <p className="text-[12px] font-semibold text-muted uppercase tracking-wider">
             {t('analytics.biggestExpense')}
           </p>
           {overview.stats?.biggestExpense ? (
             <>
-              <p className="mt-3 text-[22px] font-medium tabular text-danger">
+              <p className="mt-3 text-[26px] font-bold tabular text-danger leading-none">
                 {formatUZS(overview.stats.biggestExpense.amount)}
                 <span className="text-[13px] font-normal text-muted ml-1.5">
                   {currencyLabel}
@@ -138,12 +138,12 @@ export default function AnalyticsPage() {
           )}
         </Card>
         <Card>
-          <p className="text-[12px] text-muted font-medium">
+          <p className="text-[12px] font-semibold text-muted uppercase tracking-wider">
             {t('analytics.mostActive')}
           </p>
           {overview.stats?.mostActiveCategory ? (
             <>
-              <p className="mt-3 text-[22px] font-medium">
+              <p className="mt-3 text-[22px] font-bold leading-none">
                 {overview.stats.mostActiveCategory.name}
               </p>
               <p className="mt-1 text-[12px] text-muted">

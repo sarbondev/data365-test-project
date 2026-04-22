@@ -66,7 +66,7 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-[22px] font-medium">{t('categories.title')}</h1>
+        <h1 className="text-[22px] font-bold tracking-tight">{t('categories.title')}</h1>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -153,7 +153,7 @@ function CategoryColumn({
   return (
     <Card>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[14px] font-medium">{title}</h3>
+        <h3 className="text-[14px] font-bold text-foreground">{title}</h3>
         <Button size="sm" variant="outline" onClick={() => setAdding((v) => !v)}>
           <Plus className="h-3.5 w-3.5" />
           {t('common.add')}
@@ -163,7 +163,7 @@ function CategoryColumn({
       {adding && (
         <form
           onSubmit={submit}
-          className="mb-4 space-y-3 rounded border border-border bg-surfaceAlt/60 p-3"
+          className="mb-4 space-y-3 rounded-xl border border-borderSoft bg-surfaceAlt/60 p-4"
         >
           <Input
             placeholder={t('categories.namePlaceholder')}
@@ -297,7 +297,7 @@ function CategoryRow({
 
   if (editing) {
     return (
-      <div className="rounded border border-border bg-surfaceAlt/60 p-3 space-y-2">
+      <div className="rounded-xl border border-borderSoft bg-surfaceAlt/60 p-4 space-y-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} />
         <div className="flex flex-wrap gap-1.5">
           {COLORS.map((c) => (
@@ -334,7 +334,7 @@ function CategoryRow({
   }
 
   return (
-    <div className="flex items-center justify-between rounded px-3 py-2.5 hover:bg-surfaceAlt/60 transition-colors">
+    <div className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-surfaceAlt/70 transition-colors duration-150">
       <div className="flex items-center gap-3 min-w-0">
         <div
           className="h-8 w-8 rounded grid place-items-center text-[14px] shrink-0"
