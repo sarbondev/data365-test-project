@@ -245,11 +245,13 @@ export class AuthService {
 
   private cookieBaseOptions() {
     const secure = this.config.get<string>('COOKIE_SECURE') === 'true';
+    const domain = this.config.get<string>('COOKIE_DOMAIN');
     return {
       httpOnly: true,
       sameSite: 'lax' as const,
       secure,
       path: '/',
+      ...(domain ? { domain } : {}),
     };
   }
 
