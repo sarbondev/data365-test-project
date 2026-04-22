@@ -70,11 +70,10 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       .then(() => this.logger.log('🤖 Telegram bot stopped'))
       .catch((e: Error) => {
         const msg = e.message ?? '';
-        if (msg.includes('409')) {
-          // Another instance is polling — wait for it to die then retry
+        if (msg.includes('409') || msg.includes('blocked by the user')) {
           const delay = Math.min(attempt * 5000, 30000);
           this.logger.warn(
-            `Bot 409 conflict (attempt ${attempt}) — retrying in ${delay / 1000}s`,
+            `Bot conflict/block (attempt ${attempt}) — retrying in ${delay / 1000}s`,
           );
           setTimeout(() => this.launchWithRetry(bot, attempt + 1), delay);
         } else {
@@ -89,21 +88,31 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   }
 
   private registerHandlers(bot: Telegraf) {
-    bot.start(async (ctx) => {
-      const payload = (ctx as Context & { startPayload?: string }).startPayload;
-      if (payload?.startsWith('verify_')) {
-        await this.handleVerifyDeepLink(ctx, payload.slice('verify_'.length));
-        return;
-      }
+    bot.catch((err, ctx) => {
+      this.logger.warn(
+        `Bot error in update ${ctx.updateType}: ${(err as Error)?.message ?? err}`,
+      );
+    });
 
-      const user = await this.authService.findUserByChatId(String(ctx.chat.id));
-      if (user) {
-        const msg = botMessages(user.locale);
-        await ctx.reply(
-          `👋 ${user.locale === 'ru' ? 'Здравствуйте' : 'Salom'}, ${user.name}!\n\n${msg.WELCOME}`,
-        );
-      } else {
-        await this.askForPhone(ctx);
+    bot.start(async (ctx) => {
+      try {
+        const payload = (ctx as Context & { startPayload?: string }).startPayload;
+        if (payload?.startsWith('verify_')) {
+          await this.handleVerifyDeepLink(ctx, payload.slice('verify_'.length));
+          return;
+        }
+
+        const user = await this.authService.findUserByChatId(String(ctx.chat.id));
+        if (user) {
+          const msg = botMessages(user.locale);
+          await ctx.reply(
+            `👋 ${user.locale === 'ru' ? 'Здравствуйте' : 'Salom'}, ${user.name}!\n\n${msg.WELCOME}`,
+          );
+        } else {
+          await this.askForPhone(ctx);
+        }
+      } catch (e) {
+        this.logger.warn(`Start handler error: ${(e as Error).message}`);
       }
     });
 
@@ -268,51 +277,57 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     const chatId = String(ctx.chat.id);
     const rawPhone = contact.phone_number;
     const phone = rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`;
-
-    await this.prisma.telegramBinding.upsert({
-      where: { phone },
-      create: { phone, chatId },
-      update: { chatId },
-    });
-
-    // Check for a pending OTP for this phone
-    const otp = await this.prisma.otpVerification.findFirst({
-      where: {
-        phone,
-        verified: false,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { expiresAt: 'desc' },
-    });
-
-    if (otp) {
-      await this.prisma.otpVerification.update({
-        where: { id: otp.id },
-        data: { chatId },
+    try {
+      await this.prisma.telegramBinding.upsert({
+        where: { phone },
+        create: { phone, chatId },
+        update: { chatId },
       });
-      await ctx.replyWithHTML(
-        botMessages(otp.locale).VERIFY_OK(otp.code),
-        Markup.removeKeyboard(),
-      );
-    } else {
-      await ctx.reply(
-        '✅ Telefon raqamingiz ulandi!\n\nEndi dashboard\'da ro\'yxatdan o\'tganingizda kod to\'g\'ridan-to\'g\'ri shu yerga keladi.',
-        Markup.removeKeyboard(),
-      );
+
+      const otp = await this.prisma.otpVerification.findFirst({
+        where: {
+          phone,
+          verified: false,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { expiresAt: 'desc' },
+      });
+
+      if (otp) {
+        await this.prisma.otpVerification.update({
+          where: { id: otp.id },
+          data: { chatId },
+        });
+        await ctx.replyWithHTML(
+          botMessages(otp.locale).VERIFY_OK(otp.code),
+          Markup.removeKeyboard(),
+        );
+      } else {
+        await ctx.reply(
+          '✅ Telefon raqamingiz ulandi!\n\nEndi dashboard\'da ro\'yxatdan o\'tganingizda kod to\'g\'ridan-to\'g\'ri shu yerga keladi.',
+          Markup.removeKeyboard(),
+        );
+      }
+    } catch (e) {
+      this.logger.warn(`handleContact error: ${(e as Error).message}`);
     }
   }
 
   private async handleVerifyDeepLink(ctx: Context, token: string) {
     if (!ctx.chat) return;
-    const result = await this.authService.bindChatToOtp(
-      token,
-      String(ctx.chat.id),
-    );
-    if (!result) {
-      await ctx.reply(botMessages('uz').VERIFY_INVALID);
-      return;
+    try {
+      const result = await this.authService.bindChatToOtp(
+        token,
+        String(ctx.chat.id),
+      );
+      if (!result) {
+        await ctx.reply(botMessages('uz').VERIFY_INVALID);
+        return;
+      }
+      await ctx.replyWithHTML(botMessages(result.locale).VERIFY_OK(result.code));
+    } catch (e) {
+      this.logger.warn(`handleVerifyDeepLink error: ${(e as Error).message}`);
     }
-    await ctx.replyWithHTML(botMessages(result.locale).VERIFY_OK(result.code));
   }
 
   private txActionsKeyboard(txId: string, locale: Locale) {
