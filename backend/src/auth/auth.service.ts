@@ -72,7 +72,7 @@ export class AuthService {
 
     return {
       token,
-      telegramDeepLink: this.buildDeepLink(token),
+      telegramDeepLink: await this.buildDeepLink(token),
       expiresAt,
       phone: dto.phone,
     };
@@ -257,8 +257,36 @@ export class AuthService {
     return String(Math.floor(100000 + Math.random() * 900000));
   }
 
-  private buildDeepLink(token: string): string {
-    const username = this.config.get<string>('TELEGRAM_BOT_USERNAME', '');
+  private cachedBotUsername: string | null = null;
+
+  private async resolveBotUsername(): Promise<string> {
+    if (this.cachedBotUsername) return this.cachedBotUsername;
+
+    const fromEnv = this.config.get<string>('TELEGRAM_BOT_USERNAME', '');
+    if (fromEnv) {
+      this.cachedBotUsername = fromEnv;
+      return fromEnv;
+    }
+
+    const token = this.config.get<string>('TELEGRAM_BOT_TOKEN', '');
+    if (token) {
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+        const json = (await res.json()) as { ok: boolean; result?: { username?: string } };
+        if (json.ok && json.result?.username) {
+          this.cachedBotUsername = json.result.username;
+          return json.result.username;
+        }
+      } catch {
+        // fallthrough
+      }
+    }
+
+    return '';
+  }
+
+  private async buildDeepLink(token: string): Promise<string> {
+    const username = await this.resolveBotUsername();
     return username
       ? `https://t.me/${username}?start=verify_${token}`
       : `tg://resolve?domain=&start=verify_${token}`;
