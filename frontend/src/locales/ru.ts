@@ -116,6 +116,8 @@ export const ru: typeof uz = {
     custom: 'Другое',
   },
   auth: {
+    heroTitle: 'Управляйте финансами бизнеса',
+    heroSubtitle: 'Отслеживайте доходы и расходы, управляйте через Telegram и анализируйте данные.',
     loginTitle: 'Вход в систему',
     loginSubtitle: 'Введите номер телефона и пароль',
     login: 'Войти',

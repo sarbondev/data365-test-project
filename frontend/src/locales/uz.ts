@@ -114,6 +114,8 @@ export const uz = {
     custom: 'Boshqa',
   },
   auth: {
+    heroTitle: "Biznesingiz moliyasini nazorat qiling",
+    heroSubtitle: "Kirim-chiqimlarni kuzating, Telegram bot orqali boshqaring va tahlil qiling.",
     loginTitle: 'Tizimga kirish',
     loginSubtitle: 'Telefon raqamingiz va parolingizni kiriting',
     login: 'Kirish',

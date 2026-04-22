@@ -3,8 +3,8 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-type Variant = 'primary' | 'ghost' | 'danger' | 'outline';
-type Size = 'sm' | 'md' | 'icon';
+type Variant = 'primary' | 'ghost' | 'danger' | 'outline' | 'soft';
+type Size    = 'sm' | 'md' | 'lg' | 'icon';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -13,16 +13,17 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  primary: 'bg-accent text-white hover:bg-accent/90',
-  ghost: 'text-foreground hover:bg-surfaceAlt',
-  danger: 'bg-danger/10 text-danger hover:bg-danger/15',
-  outline:
-    'border border-border bg-surface text-foreground hover:bg-surfaceAlt',
+  primary: 'bg-accent text-white hover:bg-accentHover active:bg-accentHover shadow-xs',
+  soft:    'bg-accentSoft text-accent hover:bg-primary-100 active:bg-primary-100',
+  ghost:   'text-muted hover:bg-surfaceAlt hover:text-foreground active:bg-surfaceAlt',
+  danger:  'bg-dangerSoft text-danger hover:bg-danger/15 active:bg-danger/20',
+  outline: 'border border-border bg-surface text-foreground hover:bg-surfaceAlt active:bg-surfaceAlt',
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[12.5px]',
-  md: 'h-9 px-4 text-[13px]',
+  sm:   'h-8 px-3 text-[12.5px] gap-1.5',
+  md:   'h-9 px-4 text-[13px] gap-2',
+  lg:   'h-10 px-5 text-[13.5px] gap-2',
   icon: 'h-8 w-8 p-0',
 };
 
@@ -36,8 +37,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          'inline-flex items-center justify-center gap-2 rounded font-medium transition-colors',
+          'inline-flex items-center justify-center rounded-md font-medium',
+          'transition-colors duration-150',
           'disabled:opacity-40 disabled:pointer-events-none',
+          'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
           variantClasses[variant],
           sizeClasses[size],
           className,
@@ -45,7 +48,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {loading && (
-          <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent shrink-0" />
         )}
         {children}
       </button>

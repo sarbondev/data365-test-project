@@ -40,67 +40,77 @@ function LoginForm() {
       router.replace(next);
       router.refresh();
     } catch (e) {
-      setError(
-        e instanceof ApiError ? e.message : t('auth.errors.loginGeneric'),
-      );
+      setError(e instanceof ApiError ? e.message : t('auth.errors.loginGeneric'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-surfaceAlt">
-      <div className="w-full max-w-sm bg-surface rounded-lg border border-border p-8">
-        <div className="flex items-start justify-between mb-1 gap-3">
-          <h1 className="text-xl font-semibold">{t('auth.loginTitle')}</h1>
-          <LanguageSwitcher variant="pill" />
+    <div className="min-h-screen flex bg-background">
+      {/* Left decorative panel — hidden on mobile */}
+      <div className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 bg-gradient-to-br from-accent to-primary-700 p-10 text-white">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-white/20 grid place-items-center font-bold text-[15px]">
+            D
+          </div>
+          <span className="text-[15px] font-bold tracking-tight">data365</span>
         </div>
-        <p className="text-sm text-muted mb-6">{t('auth.loginSubtitle')}</p>
+        <div>
+          <p className="text-[28px] font-bold leading-snug mb-3">
+            {t('auth.heroTitle')}
+          </p>
+          <p className="text-[14px] text-white/70 leading-relaxed">
+            {t('auth.heroSubtitle')}
+          </p>
+        </div>
+        <p className="text-[12px] text-white/40">© {new Date().getFullYear()} data365</p>
+      </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <PhoneInput
-            label={t('auth.phone')}
-            value={phone}
-            onChange={setPhone}
-            id="phone"
-          />
-
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {t('auth.password')}
-            </label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
+      {/* Right form panel */}
+      <div className="flex flex-1 items-center justify-center px-5 py-12">
+        <div className="w-full max-w-[380px]">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-[22px] font-bold text-foreground">{t('auth.loginTitle')}</h1>
+              <p className="text-[13px] text-muted mt-1">{t('auth.loginSubtitle')}</p>
+            </div>
+            <LanguageSwitcher variant="pill" />
           </div>
 
-          {error && (
-            <p className="text-sm text-danger bg-danger/5 px-3 py-2 rounded">
-              {error}
-            </p>
-          )}
+          <form onSubmit={onSubmit} className="space-y-4">
+            <PhoneInput label={t('auth.phone')} value={phone} onChange={setPhone} id="phone" />
 
-          <Button type="submit" loading={loading} className="w-full">
-            {t('auth.login')}
-          </Button>
-        </form>
+            <div>
+              <label htmlFor="password" className="block text-[12.5px] font-semibold text-foreground mb-1.5">
+                {t('auth.password')}
+              </label>
+              <Input
+                id="password" type="password" value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
 
-        <p className="text-sm text-muted text-center mt-6">
-          {t('auth.noAccount')}{' '}
-          <Link
-            href="/register"
-            className="text-accent font-medium hover:underline"
-          >
-            {t('auth.register')}
-          </Link>
-        </p>
+            {error && (
+              <div className="flex items-start gap-2 bg-dangerSoft text-danger text-[12.5px] px-3 py-2.5 rounded-lg">
+                <span className="shrink-0 mt-px">⚠</span>
+                <span>{error}</span>
+              </div>
+            )}
+
+            <Button type="submit" loading={loading} size="lg" className="w-full mt-2">
+              {t('auth.login')}
+            </Button>
+          </form>
+
+          <p className="text-[13px] text-muted text-center mt-6">
+            {t('auth.noAccount')}{' '}
+            <Link href="/register" className="text-accent font-semibold hover:underline">
+              {t('auth.register')}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
