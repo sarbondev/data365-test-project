@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ApiError, api } from '@/lib/api';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import PhoneInput from '@/components/ui/phone-input';
 import { LanguageSwitcher } from '@/components/language-switcher';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { setUser } = useAuth();
@@ -103,5 +103,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
