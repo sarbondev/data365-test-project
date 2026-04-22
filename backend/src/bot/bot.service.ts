@@ -74,7 +74,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       .then(() => this.logger.log('🤖 Telegram bot stopped'))
       .catch((e: Error) => {
         const msg = e.message ?? '';
-        bot.stop().catch(() => void 0);
+        try { bot.stop(); } catch { void 0; }
         if (msg.includes('409') || msg.includes('blocked by the user')) {
           const delay = Math.min(attempt * 5000, 30000);
           this.logger.warn(
