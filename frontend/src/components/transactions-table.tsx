@@ -8,7 +8,7 @@ import { Input } from './ui/input';
 import { Select } from './ui/select';
 import { ConfirmDialog } from './ui/dialog';
 import { useToast } from './ui/toast';
-import { formatDate, formatUZS, isoDate } from '@/lib/utils';
+import { formatDate, formatUZS, getCategoryName, isoDate } from '@/lib/utils';
 import { useTranslation } from '@/contexts/i18n-context';
 import { api } from '@/lib/api';
 import type { Category, Source, Transaction } from '@/lib/types';
@@ -34,7 +34,7 @@ export function TransactionsTable({
   showSource = true,
 }: Props) {
   const toast = useToast();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<Partial<Transaction>>({});
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
@@ -168,7 +168,7 @@ export function TransactionsTable({
                           .map((c) => (
                             <option key={c.id} value={c.id}>
                               {c.icon ? `${c.icon} ` : ''}
-                              {c.name}
+                              {getCategoryName(c, locale)}
                             </option>
                           ))}
                       </Select>
@@ -178,7 +178,7 @@ export function TransactionsTable({
                           className="h-2 w-2 rounded-full shrink-0"
                           style={{ background: cat?.color ?? '#9E9E9E' }}
                         />
-                        {cat?.name ?? '—'}
+                        {cat ? getCategoryName(cat, locale) : '—'}
                       </span>
                     )}
                   </td>

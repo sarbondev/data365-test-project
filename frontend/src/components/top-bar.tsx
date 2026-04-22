@@ -80,7 +80,7 @@ export function TopBar() {
       <div className="h-full px-4 lg:px-5 flex items-center justify-between gap-3">
 
         <Link href="/" className="flex items-center gap-2.5 min-w-0">
-          <div className="h-8 w-8 rounded-lg bg-accent grid place-items-center text-white font-bold text-[13px] shrink-0 shadow-xs">
+          <div className="h-8 w-8 rounded-lg bg-accent grid place-items-center text-white font-bold text-[13px] shrink-0">
             D
           </div>
           <div className="min-w-0 hidden sm:block">

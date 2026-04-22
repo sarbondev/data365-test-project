@@ -85,7 +85,7 @@ export default function OverviewPage() {
 
   const donutData = (byCat?.items ?? [])
     .slice(0, 6)
-    .map((i) => ({ name: i.name, value: i.total, color: i.color }));
+    .map((i) => ({ name: locale === 'ru' ? (i.nameRu ?? i.name) : i.name, value: i.total, color: i.color }));
 
   const dateLocale = locale === 'ru' ? 'ru-RU' : 'en-GB';
 

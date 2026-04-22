@@ -62,6 +62,7 @@ model Category {
   userId       String
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
+  nameRu       String?
   type         Type
   color        String
   icon         String?

@@ -11,6 +11,7 @@ export interface ApiResponse<T> {
 export interface Category {
   id: string;
   name: string;
+  nameRu?: string | null;
   type: TxType;
   color: string;
   icon: string | null;
@@ -61,14 +62,16 @@ export interface OverviewResponse {
       date: string;
       note: string | null;
       category: string;
+      categoryNameRu?: string | null;
     } | null;
-    mostActiveCategory: { id: string; name: string; count: number } | null;
+    mostActiveCategory: { id: string; name: string; nameRu?: string | null; count: number } | null;
   };
 }
 
 export interface ByCategoryItem {
   categoryId: string;
   name: string;
+  nameRu?: string | null;
   color: string;
   icon: string | null;
   type: TxType;
@@ -95,6 +98,7 @@ export interface TrendResponse {
 export interface BudgetItem {
   categoryId: string;
   name: string;
+  nameRu?: string | null;
   color: string;
   icon: string | null;
   budget: number;

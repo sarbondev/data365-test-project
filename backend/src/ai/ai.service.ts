@@ -47,6 +47,42 @@ export class AIService {
     }
   }
 
+  async translateCategoryName(
+    text: string,
+  ): Promise<{ uz: string; ru: string }> {
+    try {
+      const res = await this.client.chat.completions.create({
+        model: 'gpt-4o',
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a bilingual translator for business category names (Uzbek/Russian). ' +
+              'Return ONLY valid JSON: {"uz": "<uzbek name>", "ru": "<russian name>"}. ' +
+              'Keep names short (1-3 words), in title case, business-appropriate. No extra text.',
+          },
+          {
+            role: 'user',
+            content: `Translate this business category name to both Uzbek and Russian: "${text}"`,
+          },
+        ],
+      });
+
+      const raw = res.choices[0]?.message?.content ?? '{}';
+      const parsed = JSON.parse(raw) as { uz?: string; ru?: string };
+
+      return {
+        uz: parsed.uz?.trim() || text,
+        ru: parsed.ru?.trim() || text,
+      };
+    } catch (e) {
+      this.logger.warn(`Category translation unavailable: ${(e as Error).message}`);
+      return { uz: text, ru: text };
+    }
+  }
+
   async parseIntent(
     text: string,
     categories: Array<{ name: string; type: 'INCOME' | 'EXPENSE' }>,

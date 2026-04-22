@@ -68,12 +68,13 @@ const config: Config = {
       },
 
       boxShadow: {
-        xs:       '0 1px 2px rgba(60,64,67,0.15)',
-        sm:       '0 1px 2px rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)',
-        card:     '0 1px 2px rgba(60,64,67,0.3), 0 2px 6px 2px rgba(60,64,67,0.1)',
-        dropdown: '0 4px 8px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08)',
-        modal:    '0 8px 24px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)',
-        'card-hover': '0 4px 12px rgba(60,64,67,0.22), 0 8px 20px rgba(60,64,67,0.1)',
+        xs:           '0 1px 2px rgba(0,0,0,0.04)',
+        sm:           '0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03)',
+        card:         '0 0 0 1px rgba(0,0,0,0.055)',
+        dropdown:     '0 8px 24px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.05)',
+        modal:        '0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06)',
+        'card-hover': '0 0 0 1px rgba(0,0,0,0.09), 0 4px 16px rgba(0,0,0,0.07)',
+        toast:        '0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.07)',
       },
 
       keyframes: {
@@ -85,6 +86,14 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(8px)' },
           to:   { opacity: '1', transform: 'translateY(0)' },
         },
+        slideInRight: {
+          from: { opacity: '0', transform: 'translateX(16px) scale(0.97)' },
+          to:   { opacity: '1', transform: 'translateX(0) scale(1)' },
+        },
+        slideOutRight: {
+          from: { opacity: '1', transform: 'translateX(0) scale(1)' },
+          to:   { opacity: '0', transform: 'translateX(16px) scale(0.97)' },
+        },
         scaleIn: {
           from: { opacity: '0', transform: 'scale(0.96)' },
           to:   { opacity: '1', transform: 'scale(1)' },
@@ -93,13 +102,19 @@ const config: Config = {
           '0%, 100%': { opacity: '1' },
           '50%':      { opacity: '0.5' },
         },
+        toastProgress: {
+          from: { transform: 'scaleX(1)' },
+          to:   { transform: 'scaleX(0)' },
+        },
       },
 
       animation: {
-        'fade-in':   'fadeIn 0.2s ease-out both',
-        'slide-up':  'slideUp 0.25s cubic-bezier(0,0,0.2,1) both',
-        'scale-in':  'scaleIn 0.15s cubic-bezier(0,0,0.2,1) both',
-        'pulse-soft':'pulseSoft 2s ease-in-out infinite',
+        'fade-in':        'fadeIn 0.2s ease-out both',
+        'slide-up':       'slideUp 0.25s cubic-bezier(0,0,0.2,1) both',
+        'slide-in-right': 'slideInRight 0.28s cubic-bezier(0.16,1,0.3,1) both',
+        'slide-out-right':'slideOutRight 0.2s cubic-bezier(0.4,0,1,1) both',
+        'scale-in':       'scaleIn 0.15s cubic-bezier(0,0,0.2,1) both',
+        'pulse-soft':     'pulseSoft 2s ease-in-out infinite',
       },
 
       transitionTimingFunction: {

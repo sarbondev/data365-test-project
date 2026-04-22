@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { HorizontalBars, TrendLine } from '@/components/charts';
 import { FullPageSpinner } from '@/components/ui/spinner';
 import { api } from '@/lib/api';
-import { formatUZS, isoDate } from '@/lib/utils';
+import { formatUZS, getCategoryName, isoDate } from '@/lib/utils';
 import { useTranslation } from '@/contexts/i18n-context';
 import { cn } from '@/lib/utils';
 import type {
@@ -20,7 +20,7 @@ import type {
 const PERIOD_IDS: Period[] = ['week', 'month', 'last-month', 'custom'];
 
 export default function AnalyticsPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [period, setPeriod] = React.useState<Period>('month');
   const [startDate, setStartDate] = React.useState(
     isoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
@@ -130,7 +130,9 @@ export default function AnalyticsPage() {
                 </span>
               </p>
               <p className="mt-1 text-[12px] text-muted">
-                {overview.stats.biggestExpense.category}
+                {locale === 'ru'
+                  ? (overview.stats.biggestExpense.categoryNameRu ?? overview.stats.biggestExpense.category)
+                  : overview.stats.biggestExpense.category}
               </p>
             </>
           ) : (
@@ -144,7 +146,7 @@ export default function AnalyticsPage() {
           {overview.stats?.mostActiveCategory ? (
             <>
               <p className="mt-3 text-[22px] font-bold leading-none">
-                {overview.stats.mostActiveCategory.name}
+                {getCategoryName(overview.stats.mostActiveCategory, locale)}
               </p>
               <p className="mt-1 text-[12px] text-muted">
                 {overview.stats.mostActiveCategory.count}{' '}
@@ -164,7 +166,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <HorizontalBars
             data={(income?.items ?? []).map((i) => ({
-              name: i.name,
+              name: getCategoryName(i, locale),
               value: i.total,
               color: i.color,
             }))}
@@ -176,7 +178,7 @@ export default function AnalyticsPage() {
           </CardHeader>
           <HorizontalBars
             data={(expense?.items ?? []).map((i) => ({
-              name: i.name,
+              name: getCategoryName(i, locale),
               value: i.total,
               color: i.color,
             }))}
@@ -215,7 +217,7 @@ export default function AnalyticsPage() {
                       />
                       <span>
                         {b.icon ? `${b.icon} ` : ''}
-                        {b.name}
+                        {getCategoryName(b, locale)}
                       </span>
                     </div>
                     <span className="text-muted tabular">

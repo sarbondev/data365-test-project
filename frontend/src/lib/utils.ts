@@ -35,6 +35,13 @@ export function startOfMonth(d = new Date()): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
 
+export function getCategoryName(
+  cat: { name: string; nameRu?: string | null },
+  locale: string,
+): string {
+  return locale === 'ru' ? (cat.nameRu ?? cat.name) : cat.name;
+}
+
 export function startOfWeek(d = new Date()): Date {
   const day = d.getDay() || 7;
   const start = new Date(d);

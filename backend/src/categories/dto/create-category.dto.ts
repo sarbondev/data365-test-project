@@ -15,6 +15,11 @@ export class CreateCategoryDto {
   @MaxLength(50)
   name!: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  nameRu?: string;
+
   @IsEnum(Type)
   type!: Type;
 

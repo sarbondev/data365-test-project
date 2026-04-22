@@ -7,7 +7,7 @@ import { Select } from './ui/select';
 import { Card } from './ui/card';
 import { useToast } from './ui/toast';
 import { api } from '@/lib/api';
-import { isoDate } from '@/lib/utils';
+import { getCategoryName, isoDate } from '@/lib/utils';
 import { useTranslation } from '@/contexts/i18n-context';
 import type { Category, TxType } from '@/lib/types';
 
@@ -22,7 +22,7 @@ export function QuickAddForm({
   onCreated,
 }: QuickAddFormProps) {
   const toast = useToast();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [type, setType] = React.useState<TxType>('EXPENSE');
   const [amount, setAmount] = React.useState('');
   const [categoryId, setCategoryId] = React.useState('');
@@ -135,7 +135,7 @@ export function QuickAddForm({
               {filtered.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.icon ? `${c.icon} ` : ''}
-                  {c.name}
+                  {getCategoryName(c, locale)}
                 </option>
               ))}
             </Select>

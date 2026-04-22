@@ -91,6 +91,7 @@ export interface UpdateTransactionInput {
 
 export interface CreateCategoryInput {
   name: string;
+  nameRu?: string;
   type: TxType;
   color: string;
   icon?: string;
@@ -99,6 +100,7 @@ export interface CreateCategoryInput {
 
 export interface UpdateCategoryInput {
   name?: string;
+  nameRu?: string | null;
   color?: string;
   icon?: string;
   budget?: number | null;

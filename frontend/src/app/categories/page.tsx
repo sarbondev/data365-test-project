@@ -9,7 +9,7 @@ import { ConfirmDialog } from '@/components/ui/dialog';
 import { FullPageSpinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
-import { formatUZS } from '@/lib/utils';
+import { formatUZS, getCategoryName } from '@/lib/utils';
 import { useTranslation } from '@/contexts/i18n-context';
 import type { Category, TxType } from '@/lib/types';
 
@@ -265,7 +265,7 @@ function CategoryRow({
   onDelete: () => void;
 }) {
   const toast = useToast();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [editing, setEditing] = React.useState(false);
   const [name, setName] = React.useState(cat.name);
   const [color, setColor] = React.useState(cat.color);
@@ -298,7 +298,7 @@ function CategoryRow({
   if (editing) {
     return (
       <div className="rounded-xl border border-borderSoft bg-surfaceAlt/60 p-4 space-y-3">
-        <Input value={name} onChange={(e) => setName(e.target.value)} />
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('categories.namePlaceholder')} />
         <div className="flex flex-wrap gap-1.5">
           {COLORS.map((c) => (
             <button
@@ -344,7 +344,7 @@ function CategoryRow({
         </div>
         <div className="min-w-0">
           <div className="text-[13.5px] flex items-center gap-1.5">
-            {cat.name}
+            {getCategoryName(cat, locale)}
             {cat.isDefault && (
               <Lock className="h-3 w-3 text-faint" />
             )}

@@ -58,7 +58,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-borderSoft shadow-card overflow-hidden',
+        'rounded-xl border border-borderSoft overflow-hidden',
         cfg.border,
         cfg.bg,
       )}

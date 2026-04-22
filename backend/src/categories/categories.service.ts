@@ -1,13 +1,17 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { Type } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AIService } from '../ai/ai.service';
 import { LocalizedException } from '../common/localized.exception';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ai: AIService,
+  ) {}
 
   async list(userId: string, type?: Type) {
     const cats = await this.prisma.category.findMany({
@@ -60,11 +64,22 @@ export class CategoriesService {
         'categories.alreadyExists',
       );
     }
-    return this.prisma.category.create({ data: { ...dto, userId } });
+
+    let { name, nameRu } = dto;
+    if (!nameRu) {
+      const translated = await this.ai.translateCategoryName(name);
+      name = translated.uz;
+      nameRu = translated.ru;
+    }
+
+    return this.prisma.category.create({ data: { ...dto, name, nameRu, userId } });
   }
 
   async update(userId: string, id: string, dto: UpdateCategoryDto) {
     const cat = await this.findById(userId, id);
+
+    let updateData = { ...dto };
+
     if (dto.name && dto.name !== cat.name) {
       const dup = await this.prisma.category.findUnique({
         where: {
@@ -77,10 +92,17 @@ export class CategoriesService {
           'categories.alreadyExists',
         );
       }
+
+      // Re-translate if name changed and no explicit nameRu provided
+      if (dto.nameRu === undefined) {
+        const translated = await this.ai.translateCategoryName(dto.name);
+        updateData = { ...updateData, name: translated.uz, nameRu: translated.ru };
+      }
     }
+
     return this.prisma.category.update({
       where: { id },
-      data: dto,
+      data: updateData,
     });
   }
 

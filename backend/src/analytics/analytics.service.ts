@@ -94,7 +94,7 @@ export class AnalyticsService {
       take: 1,
     });
 
-    let mostActiveCategory: { id: string; name: string; count: number } | null =
+    let mostActiveCategory: { id: string; name: string; nameRu: string | null; count: number } | null =
       null;
     if (mostActive.length > 0) {
       const cat = await this.prisma.category.findUnique({
@@ -104,6 +104,7 @@ export class AnalyticsService {
         mostActiveCategory = {
           id: cat.id,
           name: cat.name,
+          nameRu: cat.nameRu,
           count: mostActive[0]._count,
         };
       }
@@ -137,6 +138,7 @@ export class AnalyticsService {
               date: biggestExpense.date,
               note: biggestExpense.note,
               category: biggestExpense.category.name,
+              categoryNameRu: biggestExpense.category.nameRu ?? null,
             }
           : null,
         mostActiveCategory,
@@ -176,6 +178,7 @@ export class AnalyticsService {
         return {
           categoryId: g.categoryId,
           name: cat.name,
+          nameRu: cat.nameRu ?? null,
           color: cat.color,
           icon: cat.icon,
           type: cat.type,
@@ -189,6 +192,7 @@ export class AnalyticsService {
         ): x is {
           categoryId: string;
           name: string;
+          nameRu: string | null;
           color: string;
           icon: string | null;
           type: Type;
@@ -293,6 +297,7 @@ export class AnalyticsService {
         return {
           categoryId: c.id,
           name: c.name,
+          nameRu: c.nameRu ?? null,
           color: c.color,
           icon: c.icon,
           budget,

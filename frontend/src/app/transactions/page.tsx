@@ -9,7 +9,7 @@ import { Select } from '@/components/ui/select';
 import { TransactionsTable } from '@/components/transactions-table';
 import { FullPageSpinner, Spinner } from '@/components/ui/spinner';
 import { api } from '@/lib/api';
-import { isoDate } from '@/lib/utils';
+import { getCategoryName, isoDate } from '@/lib/utils';
 import { useTranslation } from '@/contexts/i18n-context';
 import type {
   Category,
@@ -18,7 +18,7 @@ import type {
 } from '@/lib/types';
 
 export default function TransactionsPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [data, setData] = React.useState<PaginatedTransactions | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -137,7 +137,7 @@ export default function TransactionsPage() {
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.icon ? `${c.icon} ` : ''}
-                {c.name}
+                {getCategoryName(c, locale)}
               </option>
             ))}
           </Select>
