@@ -70,6 +70,7 @@ export interface TransactionFilters {
   search?: string;
   page?: number;
   pageSize?: number;
+  [key: string]: string | number | undefined;
 }
 
 export interface CreateTransactionInput {
