@@ -75,14 +75,13 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       .catch((e: Error) => {
         const msg = e.message ?? '';
         try { bot.stop(); } catch { void 0; }
-        if (msg.includes('409') || msg.includes('blocked by the user')) {
+        this.logger.warn(`Bot error (attempt ${attempt}): ${msg}`);
+        const isTransient = msg.includes('409') || msg.includes('blocked by the user') || msg.includes('ETIMEOUT') || msg.includes('ECONNRESET');
+        if (isTransient) {
           const delay = Math.min(attempt * 5000, 30000);
-          this.logger.warn(
-            `Bot conflict/block (attempt ${attempt}) — retrying in ${delay / 1000}s`,
-          );
           setTimeout(() => this.startPolling(attempt + 1), delay);
         } else {
-          this.logger.warn(`Bot launch failed: ${msg}`);
+          this.logger.warn(`Bot stopped permanently: ${msg}`);
         }
       });
   }
