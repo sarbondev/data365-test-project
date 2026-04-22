@@ -51,43 +51,47 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   private token: string | null = null;
+  private webhookSecret: string | null = null;
 
   async onModuleInit() {
     this.token = this.config.get<string>('TELEGRAM_BOT_TOKEN') ?? null;
     if (!this.token) {
-      this.logger.warn(
-        'TELEGRAM_BOT_TOKEN not set — bot disabled. Set it in .env to enable.',
-      );
+      this.logger.warn('TELEGRAM_BOT_TOKEN not set — bot disabled.');
       return;
     }
-    this.startPolling(1);
-  }
 
-  private startPolling(attempt: number) {
-    const bot = new Telegraf(this.token!);
+    const apiUrl = this.config.get<string>('NEXT_PUBLIC_API_URL') || this.config.get<string>('API_URL') || 'https://api.data365.sarbondev.uz';
+    // Use a stable secret derived from the token (not the token itself for security)
+    this.webhookSecret = Buffer.from(this.token).toString('base64url').slice(0, 32);
+
+    const bot = new Telegraf(this.token);
     this.bot = bot;
     this.registerHandlers(bot);
 
-    this.logger.log(`🤖 Telegram bot polling started (attempt ${attempt})`);
-    bot
-      .launch({ dropPendingUpdates: true })
-      .then(() => this.logger.log('🤖 Telegram bot stopped'))
-      .catch((e: Error) => {
-        const msg = e.message ?? '';
-        try { bot.stop(); } catch { void 0; }
-        this.logger.warn(`Bot error (attempt ${attempt}): ${msg}`);
-        const isTransient = msg.includes('409') || msg.includes('blocked by the user') || msg.includes('ETIMEOUT') || msg.includes('ECONNRESET');
-        if (isTransient) {
-          const delay = Math.min(attempt * 5000, 30000);
-          setTimeout(() => this.startPolling(attempt + 1), delay);
-        } else {
-          this.logger.warn(`Bot stopped permanently: ${msg}`);
-        }
-      });
+    const webhookUrl = `${apiUrl}/bot/webhook/${this.webhookSecret}`;
+    try {
+      await bot.telegram.setWebhook(webhookUrl, { drop_pending_updates: true });
+      this.logger.log(`🤖 Telegram bot webhook set: ${webhookUrl}`);
+    } catch (e) {
+      this.logger.warn(`Failed to set webhook: ${(e as Error).message}`);
+    }
+  }
+
+  async handleWebhookUpdate(secret: string, update: object): Promise<void> {
+    if (!this.bot || secret !== this.webhookSecret) return;
+    try {
+      await this.bot.handleUpdate(update as Parameters<typeof this.bot.handleUpdate>[0]);
+    } catch (e) {
+      this.logger.warn(`Webhook update error: ${(e as Error).message}`);
+    }
   }
 
   async onModuleDestroy() {
-    this.bot?.stop('SIGTERM');
+    if (this.bot) {
+      try {
+        await this.bot.telegram.deleteWebhook();
+      } catch { void 0; }
+    }
   }
 
   private registerHandlers(bot: Telegraf) {
