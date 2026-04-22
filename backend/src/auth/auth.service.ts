@@ -25,6 +25,7 @@ export interface RegisterResult {
   telegramDeepLink: string;
   expiresAt: Date;
   phone: string;
+  codeSentDirectly: boolean;
 }
 
 @Injectable()
@@ -58,6 +59,11 @@ export class AuthService {
       where: { phone: dto.phone, verified: false },
     });
 
+    // Check if user has previously linked their Telegram account
+    const binding = await this.prisma.telegramBinding.findUnique({
+      where: { phone: dto.phone },
+    });
+
     await this.prisma.otpVerification.create({
       data: {
         phone: dto.phone,
@@ -67,15 +73,52 @@ export class AuthService {
         token,
         locale,
         expiresAt,
+        chatId: binding?.chatId ?? null,
       },
     });
+
+    let codeSentDirectly = false;
+    if (binding) {
+      codeSentDirectly = await this.sendCodeViaTelegram(
+        binding.chatId,
+        code,
+        locale,
+      );
+    }
 
     return {
       token,
       telegramDeepLink: await this.buildDeepLink(token),
       expiresAt,
       phone: dto.phone,
+      codeSentDirectly,
     };
+  }
+
+  private async sendCodeViaTelegram(
+    chatId: string,
+    code: string,
+    locale: Locale,
+  ): Promise<boolean> {
+    const botToken = this.config.get<string>('TELEGRAM_BOT_TOKEN');
+    if (!botToken) return false;
+    const text =
+      locale === 'ru'
+        ? `🔐 Ваш код подтверждения для Data365:\n\n<b>${code}</b>\n\n⏱ Действителен 30 минут.`
+        : `🔐 Data365 uchun tasdiqlash kodingiz:\n\n<b>${code}</b>\n\n⏱ 30 daqiqa davomida amal qiladi.`;
+    try {
+      const res = await fetch(
+        `https://api.telegram.org/bot${botToken}/sendMessage`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+        },
+      );
+      return res.ok;
+    } catch {
+      return false;
+    }
   }
 
   async verifyAndComplete(

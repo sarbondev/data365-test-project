@@ -131,6 +131,9 @@ export const uz = {
     verifyTitle: 'Telegram tasdiqi',
     verifySubtitle:
       'Quyidagi tugma orqali Telegram botni oching — bot sizga 6 xonali kod yuboradi. Kodni quyida kiriting.',
+    verifyTitleDirect: 'Kodni kiriting',
+    verifySubtitleDirect:
+      'Telegram\'da Data365 botidan 6 xonali kod yuborildi. Quyida kiriting.',
     openBot: 'Telegram botni ochish',
     verifyCode: 'Tasdiqlash kodi',
     verifyBtn: 'Tasdiqlash',

@@ -141,21 +141,27 @@ export default function RegisterPage() {
             <>
               <div className="mb-8">
                 <div className="h-12 w-12 rounded-2xl bg-accentSoft grid place-items-center mb-4">
-                  <span className="text-[22px]">✈️</span>
+                  <span className="text-[22px]">{pending?.codeSentDirectly ? '💬' : '✈️'}</span>
                 </div>
-                <h1 className="text-[22px] font-bold text-foreground">{t('auth.verifyTitle')}</h1>
-                <p className="text-[13px] text-muted mt-1">{t('auth.verifySubtitle')}</p>
+                <h1 className="text-[22px] font-bold text-foreground">
+                  {pending?.codeSentDirectly ? t('auth.verifyTitleDirect') : t('auth.verifyTitle')}
+                </h1>
+                <p className="text-[13px] text-muted mt-1">
+                  {pending?.codeSentDirectly ? t('auth.verifySubtitleDirect') : t('auth.verifySubtitle')}
+                </p>
               </div>
 
-              <a
-                href={pending?.telegramDeepLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full bg-[#229ED9] text-white rounded-lg py-2.5 text-[13.5px] font-semibold hover:bg-[#1e8dc2] transition-colors mb-5"
-              >
-                <span className="text-[16px]">📱</span>
-                {t('auth.openBot')}
-              </a>
+              {!pending?.codeSentDirectly && (
+                <a
+                  href={pending?.telegramDeepLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full bg-[#229ED9] text-white rounded-lg py-2.5 text-[13.5px] font-semibold hover:bg-[#1e8dc2] transition-colors mb-5"
+                >
+                  <span className="text-[16px]">📱</span>
+                  {t('auth.openBot')}
+                </a>
+              )}
 
               <form onSubmit={submitVerify} className="space-y-4">
                 <div>

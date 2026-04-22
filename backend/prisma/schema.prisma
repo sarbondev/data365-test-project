@@ -21,6 +21,14 @@ model User {
   categories   Category[]
 }
 
+model TelegramBinding {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  chatId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model OtpVerification {
   id           String   @id @default(cuid())
   phone        String

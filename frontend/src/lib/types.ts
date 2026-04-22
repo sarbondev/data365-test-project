@@ -128,4 +128,5 @@ export interface RegisterStartResponse {
   telegramDeepLink: string;
   expiresAt: string;
   phone: string;
+  codeSentDirectly: boolean;
 }

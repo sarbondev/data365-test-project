@@ -133,6 +133,9 @@ export const ru: typeof uz = {
     verifyTitle: 'Подтверждение через Telegram',
     verifySubtitle:
       'Откройте Telegram-бот по кнопке ниже — бот пришлёт 6-значный код. Введите его здесь.',
+    verifyTitleDirect: 'Введите код',
+    verifySubtitleDirect:
+      'Код подтверждения отправлен вам в Telegram от бота Data365. Введите его ниже.',
     openBot: 'Открыть Telegram-бот',
     verifyCode: 'Код подтверждения',
     verifyBtn: 'Подтвердить',

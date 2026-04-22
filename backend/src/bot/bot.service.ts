@@ -61,11 +61,27 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
     this.bot = new Telegraf(token);
     this.registerHandlers(this.bot);
+    this.launchWithRetry(this.bot);
+  }
 
-    this.bot
+  private launchWithRetry(bot: Telegraf, attempt = 1) {
+    bot
       .launch({ dropPendingUpdates: true })
-      .catch((e) => this.logger.warn(`Bot launch failed: ${(e as Error).message}`));
-    this.logger.log('🤖 Telegram bot started (polling)');
+      .then(() => this.logger.log('🤖 Telegram bot stopped'))
+      .catch((e: Error) => {
+        const msg = e.message ?? '';
+        if (msg.includes('409')) {
+          // Another instance is polling — wait for it to die then retry
+          const delay = Math.min(attempt * 5000, 30000);
+          this.logger.warn(
+            `Bot 409 conflict (attempt ${attempt}) — retrying in ${delay / 1000}s`,
+          );
+          setTimeout(() => this.launchWithRetry(bot, attempt + 1), delay);
+        } else {
+          this.logger.warn(`Bot launch failed: ${msg}`);
+        }
+      });
+    this.logger.log(`🤖 Telegram bot polling started (attempt ${attempt})`);
   }
 
   async onModuleDestroy() {
@@ -87,10 +103,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
           `👋 ${user.locale === 'ru' ? 'Здравствуйте' : 'Salom'}, ${user.name}!\n\n${msg.WELCOME}`,
         );
       } else {
-        const msg = botMessages('uz');
-        const url = this.dashboardUrl();
-        await ctx.reply(`${msg.NOT_REGISTERED}\n${url}/register`);
+        await this.askForPhone(ctx);
       }
+    });
+
+    bot.on(message('contact'), async (ctx) => {
+      await this.handleContact(ctx);
     });
 
     bot.command('cancel', async (ctx) => {
@@ -231,6 +249,57 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       return null;
     }
     return user;
+  }
+
+  private async askForPhone(ctx: Context) {
+    await ctx.reply(
+      '👋 Salom! Data365 botiga xush kelibsiz.\n\nDashboard\'da ro\'yxatdan o\'tganda kod avtomatik kelishi uchun telefon raqamingizni ulang 👇',
+      Markup.keyboard([
+        [Markup.button.contactRequest('📱 Telefon raqamni ulash')],
+      ])
+        .oneTime()
+        .resize(),
+    );
+  }
+
+  private async handleContact(ctx: Context) {
+    if (!ctx.chat || !('contact' in ctx.message!)) return;
+    const contact = (ctx.message as { contact: { phone_number: string } }).contact;
+    const chatId = String(ctx.chat.id);
+    const rawPhone = contact.phone_number;
+    const phone = rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`;
+
+    await this.prisma.telegramBinding.upsert({
+      where: { phone },
+      create: { phone, chatId },
+      update: { chatId },
+    });
+
+    // Check for a pending OTP for this phone
+    const otp = await this.prisma.otpVerification.findFirst({
+      where: {
+        phone,
+        verified: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { expiresAt: 'desc' },
+    });
+
+    if (otp) {
+      await this.prisma.otpVerification.update({
+        where: { id: otp.id },
+        data: { chatId },
+      });
+      await ctx.replyWithHTML(
+        botMessages(otp.locale).VERIFY_OK(otp.code),
+        Markup.removeKeyboard(),
+      );
+    } else {
+      await ctx.reply(
+        '✅ Telefon raqamingiz ulandi!\n\nEndi dashboard\'da ro\'yxatdan o\'tganingizda kod to\'g\'ridan-to\'g\'ri shu yerga keladi.',
+        Markup.removeKeyboard(),
+      );
+    }
   }
 
   private async handleVerifyDeepLink(ctx: Context, token: string) {
