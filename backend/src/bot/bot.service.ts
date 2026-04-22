@@ -50,37 +50,41 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     private readonly authService: AuthService,
   ) {}
 
+  private token: string | null = null;
+
   async onModuleInit() {
-    const token = this.config.get<string>('TELEGRAM_BOT_TOKEN');
-    if (!token) {
+    this.token = this.config.get<string>('TELEGRAM_BOT_TOKEN') ?? null;
+    if (!this.token) {
       this.logger.warn(
         'TELEGRAM_BOT_TOKEN not set — bot disabled. Set it in .env to enable.',
       );
       return;
     }
-
-    this.bot = new Telegraf(token);
-    this.registerHandlers(this.bot);
-    this.launchWithRetry(this.bot);
+    this.startPolling(1);
   }
 
-  private launchWithRetry(bot: Telegraf, attempt = 1) {
+  private startPolling(attempt: number) {
+    const bot = new Telegraf(this.token!);
+    this.bot = bot;
+    this.registerHandlers(bot);
+
+    this.logger.log(`🤖 Telegram bot polling started (attempt ${attempt})`);
     bot
       .launch({ dropPendingUpdates: true })
       .then(() => this.logger.log('🤖 Telegram bot stopped'))
       .catch((e: Error) => {
         const msg = e.message ?? '';
+        bot.stop().catch(() => void 0);
         if (msg.includes('409') || msg.includes('blocked by the user')) {
           const delay = Math.min(attempt * 5000, 30000);
           this.logger.warn(
             `Bot conflict/block (attempt ${attempt}) — retrying in ${delay / 1000}s`,
           );
-          setTimeout(() => this.launchWithRetry(bot, attempt + 1), delay);
+          setTimeout(() => this.startPolling(attempt + 1), delay);
         } else {
           this.logger.warn(`Bot launch failed: ${msg}`);
         }
       });
-    this.logger.log(`🤖 Telegram bot polling started (attempt ${attempt})`);
   }
 
   async onModuleDestroy() {
