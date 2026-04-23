@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { Sidebar, MobileNav } from '@/components/navigation';
 import { TopBar } from '@/components/top-bar';
+import { TelegramBanner } from '@/components/telegram-banner';
 
 const PUBLIC_PREFIXES = ['/login', '/register'];
 
@@ -21,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <main className="flex-1 min-w-0 pb-20 lg:pb-0 overflow-auto">
           <div className="px-5 py-6 lg:px-8 lg:py-7 max-w-[1280px] page-fade">
+            <TelegramBanner />
             {children}
           </div>
         </main>

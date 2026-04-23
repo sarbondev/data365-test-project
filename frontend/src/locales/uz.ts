@@ -113,6 +113,12 @@ export const uz = {
     'last-month': "O'tgan oy",
     custom: 'Boshqa',
   },
+  telegramBanner: {
+    title: '🤖 Telegram botni ulang',
+    subtitle: "Kirim va xarajatlarni bot orqali matn yoki ovoz bilan qo'shing",
+    cta: 'Botni ochish',
+    connected: '✅ Bot ulangan',
+  },
   auth: {
     heroTitle: "Biznesingiz moliyasini nazorat qiling",
     heroSubtitle: "Kirim-chiqimlarni kuzating, Telegram bot orqali boshqaring va tahlil qiling.",

@@ -115,6 +115,12 @@ export const ru: typeof uz = {
     'last-month': 'Прошлый месяц',
     custom: 'Другое',
   },
+  telegramBanner: {
+    title: '🤖 Подключите Telegram-бота',
+    subtitle: 'Добавляйте доходы и расходы через бот текстом или голосом',
+    cta: 'Открыть бота',
+    connected: '✅ Бот подключён',
+  },
   auth: {
     heroTitle: 'Управляйте финансами бизнеса',
     heroSubtitle: 'Отслеживайте доходы и расходы, управляйте через Telegram и анализируйте данные.',
