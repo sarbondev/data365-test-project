@@ -9,8 +9,6 @@ type BotCopy = {
   GENERIC_ERROR: string;
   AMOUNT_REQUIRED: string;
   NOT_REGISTERED: string;
-  VERIFY_OK: (code: string) => string;
-  VERIFY_INVALID: string;
   TX_NOT_FOUND: string;
   DELETED: string;
   DELETE_FAILED: string;
@@ -53,14 +51,6 @@ const uz: BotCopy = {
     '',
     "Botdan foydalanish uchun avval dashboard'da ro'yxatdan o'ting:",
   ].join('\n'),
-  VERIFY_OK: (code) =>
-    [
-      `✅ Tasdiqlash kodi: <b>${code}</b>`,
-      '',
-      "Ushbu kodni dashboard'ga kiriting. Kod 10 daqiqa amal qiladi.",
-    ].join('\n'),
-  VERIFY_INVALID:
-    "❗ Tasdiqlash havolasi yaroqsiz yoki muddati tugagan. Dashboard'da qaytadan boshlang.",
   TX_NOT_FOUND: 'Tranzaksiya topilmadi',
   DELETED: "O'chirildi",
   DELETE_FAILED: "O'chirib bo'lmadi",
@@ -106,14 +96,6 @@ const ru: BotCopy = {
     '',
     'Чтобы пользоваться ботом, сначала зарегистрируйтесь в дашборде:',
   ].join('\n'),
-  VERIFY_OK: (code) =>
-    [
-      `✅ Код подтверждения: <b>${code}</b>`,
-      '',
-      'Введите этот код в дашборде. Код действует 10 минут.',
-    ].join('\n'),
-  VERIFY_INVALID:
-    '❗ Ссылка подтверждения недействительна или устарела. Начните заново в дашборде.',
   TX_NOT_FOUND: 'Транзакция не найдена',
   DELETED: 'Удалено',
   DELETE_FAILED: 'Не удалось удалить',

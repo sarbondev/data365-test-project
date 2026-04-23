@@ -123,10 +123,3 @@ export interface AuthUser {
   locale: Locale;
 }
 
-export interface RegisterStartResponse {
-  token: string;
-  telegramDeepLink: string;
-  expiresAt: string;
-  phone: string;
-  codeSentDirectly: boolean;
-}

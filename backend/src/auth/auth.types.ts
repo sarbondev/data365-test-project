@@ -14,5 +14,3 @@ export interface AuthenticatedUser {
 }
 
 export const AUTH_COOKIE = 'auth_token';
-export const OTP_TTL_MIN = 30;
-export const OTP_MAX_ATTEMPTS = 5;

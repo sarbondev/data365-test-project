@@ -1,44 +1,26 @@
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { randomBytes } from 'crypto';
 import { Response } from 'express';
-import { Locale, OtpVerification, User } from '@prisma/client';
+import { Locale, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { defaultCategoriesFor } from '../common/default-categories';
+import { defaultCategories } from '../common/default-categories';
 import { LocalizedException } from '../common/localized.exception';
 import { DEFAULT_LOCALE } from '../common/i18n';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { VerifyOtpDto } from './dto/verify-otp.dto';
-import {
-  AUTH_COOKIE,
-  AuthenticatedUser,
-  JwtPayload,
-  OTP_MAX_ATTEMPTS,
-  OTP_TTL_MIN,
-} from './auth.types';
-
-export interface RegisterResult {
-  token: string;
-  telegramDeepLink: string;
-  expiresAt: Date;
-  phone: string;
-  codeSentDirectly: boolean;
-}
+import { AUTH_COOKIE, AuthenticatedUser, JwtPayload } from './auth.types';
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
   ) {}
 
-  async startRegistration(dto: RegisterDto): Promise<RegisterResult> {
+  async register(dto: RegisterDto, res: Response): Promise<AuthenticatedUser> {
     const existing = await this.prisma.user.findUnique({
       where: { phone: dto.phone },
     });
@@ -49,161 +31,25 @@ export class AuthService {
       );
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-    const code = this.generateOtpCode();
-    const token = randomBytes(24).toString('hex');
-    const expiresAt = new Date(Date.now() + OTP_TTL_MIN * 60 * 1000);
     const locale: Locale = dto.locale ?? DEFAULT_LOCALE;
-
-    await this.prisma.otpVerification.deleteMany({
-      where: { phone: dto.phone, verified: false },
-    });
-
-    // Check if user has previously linked their Telegram account
-    const binding = await this.prisma.telegramBinding.findUnique({
-      where: { phone: dto.phone },
-    });
-
-    await this.prisma.otpVerification.create({
-      data: {
-        phone: dto.phone,
-        name: dto.name,
-        passwordHash,
-        code,
-        token,
-        locale,
-        expiresAt,
-        chatId: binding?.chatId ?? null,
-      },
-    });
-
-    let codeSentDirectly = false;
-    if (binding) {
-      codeSentDirectly = await this.sendCodeViaTelegram(
-        binding.chatId,
-        code,
-        locale,
-      );
-    }
-
-    return {
-      token,
-      telegramDeepLink: await this.buildDeepLink(token),
-      expiresAt,
-      phone: dto.phone,
-      codeSentDirectly,
-    };
-  }
-
-  private async sendCodeViaTelegram(
-    chatId: string,
-    code: string,
-    locale: Locale,
-  ): Promise<boolean> {
-    const botToken = this.config.get<string>('TELEGRAM_BOT_TOKEN');
-    if (!botToken) return false;
-    const text =
-      locale === 'ru'
-        ? `🔐 Ваш код подтверждения для Data365:\n\n<b>${code}</b>\n\n⏱ Действителен 30 минут.`
-        : `🔐 Data365 uchun tasdiqlash kodingiz:\n\n<b>${code}</b>\n\n⏱ 30 daqiqa davomida amal qiladi.`;
-    try {
-      const res = await fetch(
-        `https://api.telegram.org/bot${botToken}/sendMessage`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
-        },
-      );
-      return res.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  async verifyAndComplete(
-    dto: VerifyOtpDto,
-    res: Response,
-  ): Promise<AuthenticatedUser> {
-    const otp = await this.prisma.otpVerification.findUnique({
-      where: { token: dto.token },
-    });
-    if (!otp)
-      throw new LocalizedException(
-        HttpStatus.NOT_FOUND,
-        'auth.verificationNotFound',
-      );
-    if (otp.verified)
-      throw new LocalizedException(
-        HttpStatus.BAD_REQUEST,
-        'auth.alreadyVerified',
-      );
-    if (otp.expiresAt.getTime() < Date.now()) {
-      throw new LocalizedException(
-        HttpStatus.BAD_REQUEST,
-        'auth.codeExpired',
-      );
-    }
-    if (otp.attempts >= OTP_MAX_ATTEMPTS) {
-      throw new LocalizedException(
-        HttpStatus.BAD_REQUEST,
-        'auth.tooManyAttempts',
-      );
-    }
-    if (!otp.chatId) {
-      throw new LocalizedException(
-        HttpStatus.BAD_REQUEST,
-        'auth.openLinkFirst',
-      );
-    }
-
-    if (otp.code !== dto.code) {
-      await this.prisma.otpVerification.update({
-        where: { id: otp.id },
-        data: { attempts: { increment: 1 } },
-      });
-      throw new LocalizedException(
-        HttpStatus.UNAUTHORIZED,
-        'auth.codeIncorrect',
-      );
-    }
-
-    const existing = await this.prisma.user.findUnique({
-      where: { phone: otp.phone },
-    });
-    if (existing) {
-      throw new LocalizedException(
-        HttpStatus.CONFLICT,
-        'auth.phoneAlreadyRegistered',
-      );
-    }
+    const passwordHash = await bcrypt.hash(dto.password, 10);
 
     const user = await this.prisma.$transaction(async (tx) => {
-      const chatBound = await tx.user.findUnique({
-        where: { telegramChatId: otp.chatId! },
-      });
-
       const created = await tx.user.create({
         data: {
-          name: otp.name,
-          phone: otp.phone,
-          passwordHash: otp.passwordHash,
-          locale: otp.locale,
-          telegramChatId: chatBound ? null : otp.chatId,
+          name: dto.name,
+          phone: dto.phone,
+          passwordHash,
+          locale,
         },
       });
 
       await tx.category.createMany({
-        data: defaultCategoriesFor(otp.locale).map((c) => ({
+        data: defaultCategories.map((c) => ({
           ...c,
           isDefault: true,
           userId: created.id,
         })),
-      });
-
-      await tx.otpVerification.update({
-        where: { id: otp.id },
-        data: { verified: true },
       });
 
       return created;
@@ -239,32 +85,31 @@ export class AuthService {
     return { ok: true };
   }
 
-  async bindChatToOtp(
-    token: string,
-    chatId: string,
-  ): Promise<{ code: string; phone: string; locale: Locale } | null> {
-    const otp = await this.prisma.otpVerification.findUnique({
-      where: { token },
+  async findUserByChatId(chatId: string) {
+    return this.prisma.user.findUnique({
+      where: { telegramChatId: chatId },
     });
-    if (!otp || otp.verified) return null;
-    if (otp.expiresAt.getTime() < Date.now()) return null;
-
-    await this.prisma.otpVerification.update({
-      where: { id: otp.id },
-      data: { chatId },
-    });
-    return { code: otp.code, phone: otp.phone, locale: otp.locale };
   }
 
-  async resendOtp(
-    token: string,
-  ): Promise<{ chatId: string; code: string; phone: string } | null> {
-    const otp = await this.prisma.otpVerification.findUnique({
-      where: { token },
+  async bindChatToExistingUser(
+    userId: string,
+    chatId: string,
+  ): Promise<User | null> {
+    const existing = await this.prisma.user.findUnique({
+      where: { telegramChatId: chatId },
     });
-    if (!otp || otp.verified || !otp.chatId) return null;
-    if (otp.expiresAt.getTime() < Date.now()) return null;
-    return { chatId: otp.chatId, code: otp.code, phone: otp.phone };
+    if (existing && existing.id !== userId) return null;
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { telegramChatId: chatId },
+    });
+  }
+
+  async updateLocale(userId: string, locale: Locale): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { locale },
+    });
   }
 
   private toAuthUser(u: User): AuthenticatedUser {
@@ -297,72 +142,4 @@ export class AuthService {
       ...(domain ? { domain } : {}),
     };
   }
-
-  private generateOtpCode(): string {
-    return String(Math.floor(100000 + Math.random() * 900000));
-  }
-
-  private cachedBotUsername: string | null = null;
-
-  private async resolveBotUsername(): Promise<string> {
-    if (this.cachedBotUsername) return this.cachedBotUsername;
-
-    const fromEnv = this.config.get<string>('TELEGRAM_BOT_USERNAME', '');
-    if (fromEnv) {
-      this.cachedBotUsername = fromEnv;
-      return fromEnv;
-    }
-
-    const token = this.config.get<string>('TELEGRAM_BOT_TOKEN', '');
-    if (token) {
-      try {
-        const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
-        const json = (await res.json()) as { ok: boolean; result?: { username?: string } };
-        if (json.ok && json.result?.username) {
-          this.cachedBotUsername = json.result.username;
-          return json.result.username;
-        }
-      } catch {
-        // fallthrough
-      }
-    }
-
-    return '';
-  }
-
-  private async buildDeepLink(token: string): Promise<string> {
-    const username = await this.resolveBotUsername();
-    return username
-      ? `https://t.me/${username}?start=verify_${token}`
-      : `tg://resolve?domain=&start=verify_${token}`;
-  }
-
-  async findUserByChatId(chatId: string) {
-    return this.prisma.user.findUnique({
-      where: { telegramChatId: chatId },
-    });
-  }
-
-  async bindChatToExistingUser(
-    userId: string,
-    chatId: string,
-  ): Promise<User | null> {
-    const existing = await this.prisma.user.findUnique({
-      where: { telegramChatId: chatId },
-    });
-    if (existing && existing.id !== userId) return null;
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { telegramChatId: chatId },
-    });
-  }
-
-  async updateLocale(userId: string, locale: Locale): Promise<User> {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { locale },
-    });
-  }
 }
-
-export type { OtpVerification };

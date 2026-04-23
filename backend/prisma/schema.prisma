@@ -29,23 +29,6 @@ model TelegramBinding {
   updatedAt DateTime @updatedAt
 }
 
-model OtpVerification {
-  id           String   @id @default(cuid())
-  phone        String
-  code         String
-  token        String   @unique
-  name         String
-  passwordHash String
-  locale       Locale   @default(uz)
-  chatId       String?
-  verified     Boolean  @default(false)
-  attempts     Int      @default(0)
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
-
-  @@index([phone])
-}
-
 model Transaction {
   id         String   @id @default(cuid())
   userId     String

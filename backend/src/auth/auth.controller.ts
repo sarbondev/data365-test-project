@@ -14,7 +14,6 @@ import { AuthGuard } from './auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { UpdateLocaleDto } from './dto/update-locale.dto';
 import { AuthenticatedUser } from './auth.types';
 
@@ -23,17 +22,12 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.auth.startRegistration(dto);
-  }
-
-  @Post('verify')
   @HttpCode(200)
-  verify(
-    @Body() dto: VerifyOtpDto,
+  register(
+    @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.auth.verifyAndComplete(dto, res);
+    return this.auth.register(dto, res);
   }
 
   @Post('login')

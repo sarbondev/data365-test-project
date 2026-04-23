@@ -103,12 +103,6 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
     bot.start(async (ctx) => {
       try {
-        const payload = (ctx as Context & { startPayload?: string }).startPayload;
-        if (payload?.startsWith('verify_')) {
-          await this.handleVerifyDeepLink(ctx, payload.slice('verify_'.length));
-          return;
-        }
-
         const user = await this.authService.findUserByChatId(String(ctx.chat.id));
         if (user) {
           const msg = botMessages(user.locale);
@@ -269,7 +263,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
   private async askForPhone(ctx: Context) {
     await ctx.reply(
-      '👋 Salom! Data365 botiga xush kelibsiz.\n\nDashboard\'da ro\'yxatdan o\'tganda kod avtomatik kelishi uchun telefon raqamingizni ulang 👇',
+      '👋 Salom! Data365 botiga xush kelibsiz.\n\nBotdan foydalanish uchun telefon raqamingizni ulang 👇',
       Markup.keyboard([
         [Markup.button.contactRequest('📱 Telefon raqamni ulash')],
       ])
@@ -291,49 +285,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         update: { chatId },
       });
 
-      const otp = await this.prisma.otpVerification.findFirst({
-        where: {
-          phone,
-          verified: false,
-          expiresAt: { gt: new Date() },
-        },
-        orderBy: { expiresAt: 'desc' },
-      });
-
-      if (otp) {
-        await this.prisma.otpVerification.update({
-          where: { id: otp.id },
-          data: { chatId },
-        });
-        await ctx.replyWithHTML(
-          botMessages(otp.locale).VERIFY_OK(otp.code),
-          Markup.removeKeyboard(),
-        );
-      } else {
-        await ctx.reply(
-          '✅ Telefon raqamingiz ulandi!\n\nEndi dashboard\'da ro\'yxatdan o\'tganingizda kod to\'g\'ridan-to\'g\'ri shu yerga keladi.',
-          Markup.removeKeyboard(),
-        );
-      }
+      await ctx.reply(
+        '✅ Telefon raqamingiz ulandi! Endi dashboard\'da ro\'yxatdan o\'tingiz.',
+        Markup.removeKeyboard(),
+      );
     } catch (e) {
       this.logger.warn(`handleContact error: ${(e as Error).message}`);
-    }
-  }
-
-  private async handleVerifyDeepLink(ctx: Context, token: string) {
-    if (!ctx.chat) return;
-    try {
-      const result = await this.authService.bindChatToOtp(
-        token,
-        String(ctx.chat.id),
-      );
-      if (!result) {
-        await ctx.reply(botMessages('uz').VERIFY_INVALID);
-        return;
-      }
-      await ctx.replyWithHTML(botMessages(result.locale).VERIFY_OK(result.code));
-    } catch (e) {
-      this.logger.warn(`handleVerifyDeepLink error: ${(e as Error).message}`);
     }
   }
 

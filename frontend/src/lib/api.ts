@@ -8,7 +8,6 @@ import type {
   OverviewResponse,
   PaginatedTransactions,
   Period,
-  RegisterStartResponse,
   Transaction,
   TrendResponse,
   TxType,
@@ -113,11 +112,6 @@ export interface RegisterInput {
   locale?: Locale;
 }
 
-export interface VerifyOtpInput {
-  token: string;
-  code: string;
-}
-
 export interface LoginInput {
   phone: string;
   password: string;
@@ -126,12 +120,7 @@ export interface LoginInput {
 export const api = {
   auth: {
     register: (input: RegisterInput) =>
-      request<RegisterStartResponse>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(input),
-      }),
-    verify: (input: VerifyOtpInput) =>
-      request<AuthUser>('/auth/verify', {
+      request<AuthUser>('/auth/register', {
         method: 'POST',
         body: JSON.stringify(input),
       }),
