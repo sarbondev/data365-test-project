@@ -91,20 +91,6 @@ export class AuthService {
     });
   }
 
-  async bindChatToExistingUser(
-    userId: string,
-    chatId: string,
-  ): Promise<User | null> {
-    const existing = await this.prisma.user.findUnique({
-      where: { telegramChatId: chatId },
-    });
-    if (existing && existing.id !== userId) return null;
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { telegramChatId: chatId },
-    });
-  }
-
   async updateLocale(userId: string, locale: Locale): Promise<User> {
     return this.prisma.user.update({
       where: { id: userId },

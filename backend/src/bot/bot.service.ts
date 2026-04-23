@@ -263,7 +263,14 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
   private async askForPhone(ctx: Context) {
     await ctx.reply(
-      '👋 Salom! Data365 botiga xush kelibsiz.\n\nBotdan foydalanish uchun telefon raqamingizni ulang 👇',
+      [
+        '👋 Salom! Data365 botiga xush kelibsiz.',
+        '',
+        "Botdan foydalanish uchun avval dashboard'da ro'yxatdan o'ting:",
+        `${this.dashboardUrl()}/register`,
+        '',
+        "So'ngra telefon raqamingizni ulang 👇",
+      ].join('\n'),
       Markup.keyboard([
         [Markup.button.contactRequest('📱 Telefon raqamni ulash')],
       ])
@@ -279,18 +286,38 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     const rawPhone = contact.phone_number;
     const phone = rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`;
     try {
-      await this.prisma.telegramBinding.upsert({
-        where: { phone },
-        create: { phone, chatId },
-        update: { chatId },
+      const user = await this.prisma.user.findUnique({ where: { phone } });
+      if (!user) {
+        await ctx.reply(
+          [
+            "❌ Bu raqam ro'yxatdan o'tmagan.",
+            '',
+            "Avval dashboard'da ro'yxatdan o'ting:",
+            `${this.dashboardUrl()}/register`,
+          ].join('\n'),
+          Markup.removeKeyboard(),
+        );
+        return;
+      }
+
+      await this.prisma.user.updateMany({
+        where: { telegramChatId: chatId, NOT: { id: user.id } },
+        data: { telegramChatId: null },
       });
 
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { telegramChatId: chatId },
+      });
+
+      const msg = botMessages(user.locale);
       await ctx.reply(
-        '✅ Telefon raqamingiz ulandi! Endi dashboard\'da ro\'yxatdan o\'tingiz.',
+        `✅ ${user.locale === 'ru' ? 'Здравствуйте' : 'Salom'}, ${user.name}!\n\n${msg.WELCOME}`,
         Markup.removeKeyboard(),
       );
     } catch (e) {
       this.logger.warn(`handleContact error: ${(e as Error).message}`);
+      await ctx.reply(botMessages('uz').GENERIC_ERROR, Markup.removeKeyboard());
     }
   }
 
